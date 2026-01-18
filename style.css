@@ -16,27 +16,33 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
+  /* Hapus overflow hidden agar bisa di-scroll di layar kecil */
+  overflow-x: hidden;
 }
 
 .app-container {
   width: 95%;
   max-width: 1100px;
-  height: 85vh;
+  /* Tinggi fleksibel untuk layar kecil */
+  height: auto;
+  min-height: 90vh;
   background: var(--panel-bg);
   border-radius: 20px;
-  padding: 25px;
+  padding: clamp(15px, 3vw, 25px);
   box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6);
   border: 1px solid rgba(212, 175, 55, 0.15);
   display: flex;
   flex-direction: column;
+  margin: 20px 0;
 }
 
 .main-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap; /* Membungkus konten jika layar sempit */
+  gap: 15px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   padding-bottom: 15px;
   margin-bottom: 20px;
@@ -45,26 +51,37 @@ body {
 
 .logo {
   font-family: "Cinzel", serif;
-  font-size: 1.6rem;
+  font-size: clamp(1.2rem, 4vw, 1.6rem);
   color: var(--gold-light);
 }
+
 .logo span {
   color: var(--gold);
 }
 
-/* Grid Layout */
+/* --- GRID LAYOUT RESPONSIF --- */
 .content-wrapper {
   display: grid;
-  grid-template-columns: 1.4fr 1fr;
-  gap: 30px;
+  /* Default 1 kolom (untuk mobile/layar kecil) */
+  grid-template-columns: 1fr;
+  gap: 20px;
   flex-grow: 1;
-  min-height: 0; /* Penting agar container tidak meluap */
 }
 
-/* PERBAIKAN UTAMA: Preview Area */
+/* Switch ke 2 kolom untuk layar di atas 850px (Desktop) */
+@media (min-width: 850px) {
+  .content-wrapper {
+    grid-template-columns: 1.4fr 1fr;
+    gap: 30px;
+    height: 100%;
+    min-height: 0;
+  }
+}
+
 .preview-section {
   width: 100%;
-  height: 100%;
+  /* Menjaga proporsi kotak kamera tetap 4:3 */
+  aspect-ratio: 4 / 3;
   background: #000;
   border-radius: 12px;
   border: 2px solid #2a2d31;
@@ -83,128 +100,88 @@ body {
   justify-content: center;
 }
 
-/* Agar Video & Canvas Tidak Gepeng */
 .display-box {
-  max-width: 100%;
-  max-height: 100%;
-  width: auto;
-  height: auto;
-  object-fit: contain; /* Menjaga rasio asli kamera */
+  width: 100%;
+  height: 100%;
+  object-fit: contain; /* Menjamin rasio asli kamera DSLR/Webcam tetap terjaga */
 }
 
 #timer-display {
   position: absolute;
-  top: 20px;
-  right: 20px;
+  top: 15px;
+  right: 15px;
   background: rgba(212, 175, 55, 0.9);
   color: #000;
-  font-size: 2.5rem;
+  font-size: clamp(1.5rem, 5vw, 2.5rem);
   font-weight: 800;
-  padding: 10px 25px;
+  padding: 8px 20px;
   border-radius: 10px;
   display: none;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
   z-index: 10;
 }
 
-/* Panel Kontrol */
+/* Panel Kontrol Responsif */
 .control-panel {
   background: rgba(255, 255, 255, 0.03);
-  padding: 20px;
+  padding: clamp(15px, 3vw, 20px);
   border-radius: 15px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  overflow-y: auto; /* Jika layar kecil, panel bisa di-scroll */
+  gap: 15px;
 }
 
 .panel-title {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 1px;
   color: var(--gold);
-  margin-bottom: 15px;
   border-left: 3px solid var(--gold);
   padding-left: 10px;
 }
 
 .input-row {
   display: flex;
-  gap: 15px;
+  gap: 10px;
 }
-.input-group {
-  flex: 1;
-  margin-bottom: 15px;
-}
+
 .input-group label {
   display: block;
-  font-size: 0.75rem;
-  margin-bottom: 6px;
+  font-size: 0.7rem;
+  margin-bottom: 5px;
   color: #888;
 }
+
 .input-group input,
 select {
   width: 100%;
-  padding: 10px;
+  padding: 12px;
   background: #2a2d31;
   border: 1px solid #3f444a;
   color: #fff;
-  border-radius: 6px;
-  outline: none;
-  box-sizing: border-box;
-}
-
-button {
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-  font-family: inherit;
+  border-radius: 8px;
+  font-size: 0.9rem;
 }
 
 .btn-primary {
   width: 100%;
-  padding: 15px;
+  padding: 16px;
   background: var(--gold);
   color: #000;
   font-weight: 700;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 1rem;
-}
-.btn-primary:hover {
-  background: var(--gold-light);
-  transform: translateY(-2px);
 }
 
 .filter-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
 }
-.filter-btn {
-  padding: 10px;
-  background: #333;
-  color: #fff;
-  border-radius: 5px;
-  font-size: 0.8rem;
-}
 
-.btn-wa {
-  background: var(--accent);
-  color: white;
-  width: 100%;
-  padding: 12px;
-  border-radius: 8px;
-  font-weight: 600;
-}
-
-.btn-outline {
-  background: transparent;
-  border: 1px solid #555;
-  color: white;
-  flex: 1;
-  padding: 10px;
-  border-radius: 8px;
-  font-size: 0.8rem;
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .button-row {
@@ -212,13 +189,26 @@ button {
   gap: 10px;
 }
 
+.btn-wa {
+  background: var(--accent);
+  color: white;
+  padding: 12px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+.btn-outline {
+  background: transparent;
+  border: 1px solid #555;
+  color: white;
+  padding: 10px;
+  border-radius: 8px;
+  flex: 1;
+}
 .btn-reset {
-  width: 100%;
-  background: none;
   color: #ff6b6b;
-  font-size: 0.8rem;
   text-decoration: underline;
-  margin-top: 10px;
+  background: none;
+  margin-top: 5px;
 }
 
 .hidden {
