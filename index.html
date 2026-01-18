@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Premium Photobooth | Tarhib Ramadhan</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="app-container">
+      <header class="main-header">
+        <div class="logo">🌙 Tarhib <span>Ramadhan</span></div>
+        <div class="camera-selector">
+          <select id="camera-select">
+            <option value="">Memuat Kamera...</option>
+          </select>
+        </div>
+      </header>
+
+      <main class="content-wrapper">
+        <div class="preview-section">
+          <div id="video-wrapper" class="display-box">
+            <video id="video" autoplay playsinline></video>
+            <div id="timer-display"></div>
+          </div>
+          <canvas id="main-canvas" class="display-box hidden"></canvas>
+        </div>
+
+        <aside class="control-panel">
+          <div id="setup-controls" class="panel-group">
+            <h3 class="panel-title">Pengaturan Foto</h3>
+            <div class="input-row">
+              <div class="input-group">
+                <label>Jumlah Foto</label>
+                <input type="number" id="photo-count" value="1" disabled />
+              </div>
+              <div class="input-group">
+                <label>Timer (Detik)</label>
+                <input
+                  type="number"
+                  id="timer-duration"
+                  value="3"
+                  min="1"
+                  max="10"
+                />
+              </div>
+            </div>
+            <button id="btn-capture" class="btn-primary">
+              📸 MULAI CAPTURE
+            </button>
+          </div>
+
+          <div id="editor-controls" class="panel-group hidden">
+            <h3 class="panel-title">Efek & Filter</h3>
+            <div class="filter-grid">
+              <button class="filter-btn" onclick="applyFilter('none')">
+                Original
+              </button>
+              <button
+                class="filter-btn"
+                onclick="applyFilter('grayscale(100%)')"
+              >
+                B&W
+              </button>
+              <button class="filter-btn" onclick="applyFilter('sepia(80%)')">
+                Classic
+              </button>
+              <button
+                class="filter-btn"
+                onclick="applyFilter('brightness(1.2) contrast(1.1)')"
+              >
+                Vivid
+              </button>
+            </div>
+
+            <h3 class="panel-title">Kirim Hasil</h3>
+            <div class="input-group">
+              <label>Nomor WhatsApp</label>
+              <input type="text" id="wa-number" placeholder="628123456789" />
+            </div>
+
+            <div class="action-buttons">
+              <button onclick="shareWA()" class="btn-wa">
+                💬 Kirim WhatsApp
+              </button>
+              <div class="button-row">
+                <button onclick="downloadImage()" class="btn-outline">
+                  💾 Simpan
+                </button>
+                <button onclick="window.print()" class="btn-outline">
+                  🖨️ Cetak
+                </button>
+              </div>
+              <button onclick="resetApp()" class="btn-reset">
+                Ambil Foto Ulang
+              </button>
+            </div>
+          </div>
+        </aside>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
