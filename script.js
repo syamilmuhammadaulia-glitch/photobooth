@@ -1,32 +1,40 @@
 /**
- * PREMIUM PHOTOBOOTH SCRIPT - PORTRAIT EDITION
+ * PREMIUM PHOTOBOOTH CORE SCRIPT
+ * Sinkron dengan index.html (Desain Baru)
  */
 
 let videoStream = null;
-let capturedPhotos = []; 
+let fotoMentah = null;
 let currentDeviceId = null;
-let currentFilter = 'none'; // Menyimpan filter yang aktif
 
+// Mengambil elemen dari HTML
 const video = document.getElementById("video");
 const canvas = document.getElementById("main-canvas");
 const ctx = canvas.getContext("2d");
 const videoWrapper = document.getElementById("video-wrapper");
 const setupControls = document.getElementById("setup-controls");
 const editorControls = document.getElementById("editor-controls");
-const statusDisplay = document.getElementById("photo-status");
 
 /**
- * 1. INISIALISASI KAMERA
+ * 1. INISIALISASI KAMERA (OTOMATIS)
  */
 async function initApp() {
   try {
+    // Meminta izin kamera terlebih dahulu agar label nama kamera muncul
     await navigator.mediaDevices.getUserMedia({ video: true });
+
     const devices = await navigator.mediaDevices.enumerateDevices();
-    const videoDevices = devices.filter((device) => device.kind === "videoinput");
+    const videoDevices = devices.filter(
+      (device) => device.kind === "videoinput",
+    );
     const select = document.getElementById("camera-select");
 
+    // Isi dropdown kamera
     select.innerHTML = videoDevices
-      .map((d) => `<option value="${d.deviceId}">${d.label || "Kamera " + d.deviceId.slice(0, 5)}</option>`)
+      .map(
+        (d) =>
+          `<option value="${d.deviceId}">${d.label || "Kamera " + d.deviceId.slice(0, 5)}</option>`,
+      )
       .join("");
 
     if (videoDevices.length > 0) {
@@ -35,7 +43,7 @@ async function initApp() {
     }
   } catch (err) {
     console.error("Gagal inisialisasi:", err);
-    alert("Mohon izinkan akses kamera.");
+    alert("Mohon izinkan akses kamera agar aplikasi dapat berjalan.");
   }
 }
 
@@ -43,41 +51,39 @@ async function startCamera(deviceId) {
   if (videoStream) {
     videoStream.getTracks().forEach((track) => track.stop());
   }
-  // [UBAH] Meminta resolusi yang lebih tinggi agar tajam saat di-crop portrait
+
   const constraints = {
     video: {
       deviceId: deviceId ? { exact: deviceId } : undefined,
-      width: { ideal: 1920 }, 
-      height: { ideal: 1080 },
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
     },
     audio: false,
   };
+
   try {
     videoStream = await navigator.mediaDevices.getUserMedia(constraints);
     video.srcObject = videoStream;
   } catch (err) {
     console.error("Gagal akses kamera:", err);
-    // Fallback jika kamera HD tidak didukung
-    try {
-        videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
-        video.srcObject = videoStream;
-    } catch(e) { alert("Kamera tidak dapat diakses.") }
   }
 }
 
+// Event ganti kamera dari dropdown
 document.getElementById("camera-select").onchange = (e) => {
   currentDeviceId = e.target.value;
   startCamera(currentDeviceId);
 };
 
 /**
- * 2. LOGIKA CAPTURE (LOOP 4 FOTO)
+ * 2. LOGIKA CAPTURE & TIMER
  */
 function runCountdown(seconds) {
   return new Promise((resolve) => {
     const display = document.getElementById("timer-display");
     let count = seconds;
-    display.style.display = "flex"; // Menggunakan flex agar terpusat (sesuai CSS baru)
+
+    display.style.display = "block";
     display.innerText = count;
 
     const timer = setInterval(() => {
@@ -93,163 +99,91 @@ function runCountdown(seconds) {
   });
 }
 
-function wait(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-// Fungsi Helper: Crop tengah (Center Cut) dari video landscape ke kotak portrait
-function cropCenter(sourceCanvas, targetWidth, targetHeight) {
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = targetWidth;
-    tempCanvas.height = targetHeight;
-    const tCtx = tempCanvas.getContext('2d');
-
-    // Hitung aspek rasio
-    const sourceAspect = sourceCanvas.width / sourceCanvas.height;
-    const targetAspect = targetWidth / targetHeight;
-
-    let renderW, renderH, offsetX, offsetY;
-
-    if (sourceAspect > targetAspect) {
-        // Source lebih lebar (landscape), crop sisi kiri-kanan
-        renderH = targetHeight;
-        renderW = sourceCanvas.width * (targetHeight / sourceCanvas.height);
-        offsetX = (targetWidth - renderW) / 2;
-        offsetY = 0;
-    } else {
-        // Source lebih tinggi (jarang terjadi di webcam), crop atas-bawah
-        renderW = targetWidth;
-        renderH = sourceCanvas.height * (targetWidth / sourceCanvas.width);
-        offsetX = 0;
-        offsetY = (targetHeight - renderH) / 2;
-    }
-
-    tCtx.drawImage(sourceCanvas, offsetX, offsetY, renderW, renderH);
-    return tempCanvas;
-}
-
-
 document.getElementById("btn-capture").onclick = async () => {
   const durasi = parseInt(document.getElementById("timer-duration").value) || 3;
-  capturedPhotos = [];
-  
-  document.getElementById("btn-capture").classList.remove("btn-pulse"); // Stop animasi tombol
 
-  for (let i = 1; i <= 4; i++) {
-    statusDisplay.style.display = 'block';
-    statusDisplay.innerHTML = `Pose <b>${i}</b> / 4`;
-    
-    await runCountdown(durasi);
-    
-    // Capture resolusi penuh dari video
-    const rawCanvas = document.createElement('canvas');
-    rawCanvas.width = video.videoWidth;
-    rawCanvas.height = video.videoHeight;
-    const rawCtx = rawCanvas.getContext('2d');
-    rawCtx.drawImage(video, 0, 0); // Gambar video asli (biasanya landscape)
+  // Proses Timer
+  await runCountdown(durasi);
 
-    // Simpan gambar asli
-    const imgObj = new Image();
-    imgObj.src = rawCanvas.toDataURL("image/jpeg", 0.9);
-    await new Promise(r => imgObj.onload = r);
-    capturedPhotos.push(imgObj);
-    
-    statusDisplay.innerHTML = "✨ Cekrek! ✨";
-    await wait(800); 
-  }
+  // Ambil Gambar
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-  statusDisplay.style.display = 'none';
+  // Simpan ke memori sebagai Image Object
+  fotoMentah = new Image();
+  fotoMentah.src = canvas.toDataURL("image/png");
 
-  // Transisi UI
-  videoWrapper.classList.add("hidden");
-  canvas.classList.remove("hidden");
-  setupControls.classList.add("hidden");
-  editorControls.classList.remove("hidden");
+  fotoMentah.onload = () => {
+    // Transisi: Sembunyikan Video, Tampilkan Editor
+    videoWrapper.classList.add("hidden");
+    canvas.classList.remove("hidden");
+    setupControls.classList.add("hidden");
+    editorControls.classList.remove("hidden");
 
-  drawAll();
-  showLargeQRInUI(); // [BARU] Tampilkan QR Besar di panel samping
+    drawAll(); // Gambar Frame Awal
+  };
 };
 
 /**
- * 3. EDITOR & FRAME DESIGN (PORTRAIT + GRID 2x2)
+ * 3. EDITOR & FRAME DESIGN
  */
-function drawAll(filter = currentFilter) {
-  currentFilter = filter;
-  
-  // [UBAH] Dimensi Portrait (3:4 ratio resolution)
-  canvas.width = 900;  
-  canvas.height = 1200;
-  
-  const footerHeight = 180; // Area bawah untuk teks & QR kecil
-  const gridAreaHeight = canvas.height - footerHeight;
-  const padding = 30; // Jarak pinggir frame
+function drawAll(filter = "none") {
+  // 1. Bersihkan Canvas
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Warna Background Frame Mewah
-  const gradientBg = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-  gradientBg.addColorStop(0, "#15171b");
-  gradientBg.addColorStop(1, "#0a0b0d");
-  ctx.fillStyle = gradientBg;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  // Border Emas Luar
-  ctx.strokeStyle = "#d4af37";
-  ctx.lineWidth = 15;
-  ctx.strokeRect(7.5, 7.5, canvas.width - 15, canvas.height - 15);
-  // Border Emas Dalam Tipis
-  ctx.lineWidth = 2;
-  ctx.strokeRect(padding - 10, padding - 10, canvas.width - (padding*2) + 20, gridAreaHeight - (padding*2) + 20);
-
-  // Perhitungan Grid
-  // Area bersih untuk 4 foto
-  const usableWidth = canvas.width - (padding * 2);
-  const usableHeight = gridAreaHeight - (padding * 2);
-  
-  const cellW = usableWidth / 2;
-  const cellH = usableHeight / 2;
-  const gap = 15; // Jarak antar foto
-
-  // Koordinat 4 Foto
-  const positions = [
-    { x: padding, y: padding },
-    { x: padding + cellW + gap, y: padding },
-    { x: padding, y: padding + cellH + gap },
-    { x: padding + cellW + gap, y: padding + cellH + gap }
-  ];
-
+  // 2. Gambar Foto dengan Filter
   ctx.save();
   ctx.filter = filter;
-
-  // Gambar 4 Foto dalam Grid
-  capturedPhotos.forEach((img, index) => {
-      if(index < 4) {
-        // Crop foto landscape menjadi kotak portrait agar pas di cell
-        const croppedCanvas = cropCenter(img, cellW, cellH);
-        
-        const posX = positions[index].x;
-        const posY = positions[index].y;
-
-        // Shadow di belakang foto
-        ctx.shadowColor = "rgba(0,0,0,0.5)";
-        ctx.shadowBlur = 20;
-        ctx.shadowOffsetX = 5;
-        ctx.shadowOffsetY = 5;
-        
-        // Gambar foto yang sudah di-crop
-        ctx.drawImage(croppedCanvas, posX, posY, cellW, cellH);
-
-        // Reset shadow untuk border
-        ctx.shadowColor = "transparent";
-        
-        // Border putih tipis di sekeliling tiap foto
-        ctx.strokeStyle = "#fff";
-        ctx.lineWidth = 4;
-        ctx.strokeRect(posX, posY, cellW, cellH);
-      }
-  });
+  ctx.drawImage(fotoMentah, 0, 0, canvas.width, canvas.height);
   ctx.restore();
-  // ... kode script.js yang sudah ada di atas ...
 
-// --- TAMBAHAN PENTING ---
-// Jalankan fungsi initApp saat halaman selesai dimuat
-window.addEventListener('load', initApp);
+  // 3. FRAME PREMIUM RAMADHAN
+  // Border Emas
+  ctx.strokeStyle = "#d4af37";
+  ctx.lineWidth = 40;
+  ctx.strokeRect(0, 0, canvas.width, canvas.height);
+
+  // Teks Ucapan
+  ctx.fillStyle = "white";
+  ctx.font = "bold 35px serif"; // Font serif agar terlihat mewah
+  ctx.textAlign = "center";
+  ctx.shadowColor = "black";
+  ctx.shadowBlur = 10;
+  ctx.fillText("Tarhib Ramadhan 1447H", canvas.width / 2, canvas.height - 60);
+}
+
+// Fungsi Filter (Dipanggil dari onclick di HTML)
+function applyFilter(f) {
+  if (!fotoMentah) return;
+  drawAll(f);
+}
+
+/**
+ * 4. SHARE, SAVE & RESET
+ */
+function downloadImage() {
+  const link = document.createElement("a");
+  link.download = `Photo_Ramadhan_${Date.now()}.png`;
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+}
+
+function shareWA() {
+  let num = document.getElementById("wa-number").value.replace(/\D/g, "");
+  if (!num) return alert("Masukkan nomor WhatsApp yang valid!");
+
+  downloadImage(); // Otomatis simpan sebagai backup
+  const pesan = encodeURIComponent("Cek foto seru saya di Tarhib Ramadhan! 🌙");
+  window.open(`https://wa.me/${num}?text=${pesan}`, "_blank");
+}
+
+function resetApp() {
+  if (confirm("Ingin ambil foto ulang? Foto saat ini akan dihapus.")) {
+    location.reload();
+  }
+}
+
+// JALANKAN APLIKASI SAAT PAGE LOAD
+initApp();
 
