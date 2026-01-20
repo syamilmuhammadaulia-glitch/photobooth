@@ -1,23 +1,22 @@
 /**
- * PREMIUM PHOTOBOOTH CORE SCRIPT
- * Sinkron dengan index.html
+ * PREMIUM PHOTOBOOTH SCRIPT - PORTRAIT EDITION
  */
 
 let videoStream = null;
-let capturedPhotos = []; // [BARU] Array untuk menyimpan 4 foto
+let capturedPhotos = []; 
 let currentDeviceId = null;
+let currentFilter = 'none'; // Menyimpan filter yang aktif
 
-// Mengambil elemen dari HTML
 const video = document.getElementById("video");
 const canvas = document.getElementById("main-canvas");
 const ctx = canvas.getContext("2d");
 const videoWrapper = document.getElementById("video-wrapper");
 const setupControls = document.getElementById("setup-controls");
 const editorControls = document.getElementById("editor-controls");
-const statusDisplay = document.getElementById("photo-status"); // [BARU]
+const statusDisplay = document.getElementById("photo-status");
 
 /**
- * 1. INISIALISASI KAMERA (OTOMATIS)
+ * 1. INISIALISASI KAMERA
  */
 async function initApp() {
   try {
@@ -44,11 +43,12 @@ async function startCamera(deviceId) {
   if (videoStream) {
     videoStream.getTracks().forEach((track) => track.stop());
   }
+  // [UBAH] Meminta resolusi yang lebih tinggi agar tajam saat di-crop portrait
   const constraints = {
     video: {
       deviceId: deviceId ? { exact: deviceId } : undefined,
-      width: { ideal: 1280 },
-      height: { ideal: 720 },
+      width: { ideal: 1920 }, 
+      height: { ideal: 1080 },
     },
     audio: false,
   };
@@ -57,6 +57,11 @@ async function startCamera(deviceId) {
     video.srcObject = videoStream;
   } catch (err) {
     console.error("Gagal akses kamera:", err);
+    // Fallback jika kamera HD tidak didukung
+    try {
+        videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = videoStream;
+    } catch(e) { alert("Kamera tidak dapat diakses.") }
   }
 }
 
@@ -72,7 +77,7 @@ function runCountdown(seconds) {
   return new Promise((resolve) => {
     const display = document.getElementById("timer-display");
     let count = seconds;
-    display.style.display = "block";
+    display.style.display = "flex"; // Menggunakan flex agar terpusat (sesuai CSS baru)
     display.innerText = count;
 
     const timer = setInterval(() => {
@@ -88,183 +93,157 @@ function runCountdown(seconds) {
   });
 }
 
-// [BARU] Fungsi Helper untuk jeda sebentar antar foto
 function wait(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Fungsi Helper: Crop tengah (Center Cut) dari video landscape ke kotak portrait
+function cropCenter(sourceCanvas, targetWidth, targetHeight) {
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = targetWidth;
+    tempCanvas.height = targetHeight;
+    const tCtx = tempCanvas.getContext('2d');
+
+    // Hitung aspek rasio
+    const sourceAspect = sourceCanvas.width / sourceCanvas.height;
+    const targetAspect = targetWidth / targetHeight;
+
+    let renderW, renderH, offsetX, offsetY;
+
+    if (sourceAspect > targetAspect) {
+        // Source lebih lebar (landscape), crop sisi kiri-kanan
+        renderH = targetHeight;
+        renderW = sourceCanvas.width * (targetHeight / sourceCanvas.height);
+        offsetX = (targetWidth - renderW) / 2;
+        offsetY = 0;
+    } else {
+        // Source lebih tinggi (jarang terjadi di webcam), crop atas-bawah
+        renderW = targetWidth;
+        renderH = sourceCanvas.height * (targetWidth / sourceCanvas.width);
+        offsetX = 0;
+        offsetY = (targetHeight - renderH) / 2;
+    }
+
+    tCtx.drawImage(sourceCanvas, offsetX, offsetY, renderW, renderH);
+    return tempCanvas;
+}
+
+
 document.getElementById("btn-capture").onclick = async () => {
   const durasi = parseInt(document.getElementById("timer-duration").value) || 3;
-  capturedPhotos = []; // Reset array
+  capturedPhotos = [];
   
-  // Ambil 4 Foto
+  document.getElementById("btn-capture").classList.remove("btn-pulse"); // Stop animasi tombol
+
   for (let i = 1; i <= 4; i++) {
-    // Update Status
     statusDisplay.style.display = 'block';
-    statusDisplay.innerText = `Siap-siap! Foto ${i} dari 4`;
+    statusDisplay.innerHTML = `Pose <b>${i}</b> / 4`;
     
-    // Countdown
     await runCountdown(durasi);
     
-    // Capture ke canvas sementara (virtual)
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = video.videoWidth;
-    tempCanvas.height = video.videoHeight;
-    const tempCtx = tempCanvas.getContext('2d');
-    tempCtx.drawImage(video, 0, 0);
-    
-    // Simpan data gambar
-    const imgData = tempCanvas.toDataURL("image/png");
+    // Capture resolusi penuh dari video
+    const rawCanvas = document.createElement('canvas');
+    rawCanvas.width = video.videoWidth;
+    rawCanvas.height = video.videoHeight;
+    const rawCtx = rawCanvas.getContext('2d');
+    rawCtx.drawImage(video, 0, 0); // Gambar video asli (biasanya landscape)
+
+    // Simpan gambar asli
     const imgObj = new Image();
-    imgObj.src = imgData;
-    await new Promise(r => imgObj.onload = r); // Tunggu load
+    imgObj.src = rawCanvas.toDataURL("image/jpeg", 0.9);
+    await new Promise(r => imgObj.onload = r);
     capturedPhotos.push(imgObj);
     
-    // Flash effect atau jeda singkat
-    statusDisplay.innerText = "Cekrek! 📸";
-    await wait(1000); 
+    statusDisplay.innerHTML = "✨ Cekrek! ✨";
+    await wait(800); 
   }
 
   statusDisplay.style.display = 'none';
 
-  // Transisi ke Editor
+  // Transisi UI
   videoWrapper.classList.add("hidden");
   canvas.classList.remove("hidden");
   setupControls.classList.add("hidden");
   editorControls.classList.remove("hidden");
 
-  drawAll(); // Render Grid 2x2
+  drawAll();
+  showLargeQRInUI(); // [BARU] Tampilkan QR Besar di panel samping
 };
 
 /**
- * 3. EDITOR & FRAME DESIGN (GRID 2x2 + QR)
+ * 3. EDITOR & FRAME DESIGN (PORTRAIT + GRID 2x2)
  */
-function drawAll(filter = "none") {
-  // Atur ukuran canvas utama (misal HD)
-  canvas.width = 1280; 
-  canvas.height = 960; // 4:3 Aspect Ratio (sedikit lebih tinggi untuk footer teks)
+function drawAll(filter = currentFilter) {
+  currentFilter = filter;
   
-  // Warna Background Frame
-  ctx.fillStyle = "#1a1d21";
+  // [UBAH] Dimensi Portrait (3:4 ratio resolution)
+  canvas.width = 900;  
+  canvas.height = 1200;
+  
+  const footerHeight = 180; // Area bawah untuk teks & QR kecil
+  const gridAreaHeight = canvas.height - footerHeight;
+  const padding = 30; // Jarak pinggir frame
+
+  // Warna Background Frame Mewah
+  const gradientBg = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+  gradientBg.addColorStop(0, "#15171b");
+  gradientBg.addColorStop(1, "#0a0b0d");
+  ctx.fillStyle = gradientBg;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Ukuran per foto dalam grid
-  const w = canvas.width / 2;
-  const h = (canvas.height - 100) / 2; // -100px untuk space teks/QR di bawah
+  // Border Emas Luar
+  ctx.strokeStyle = "#d4af37";
+  ctx.lineWidth = 15;
+  ctx.strokeRect(7.5, 7.5, canvas.width - 15, canvas.height - 15);
+  // Border Emas Dalam Tipis
+  ctx.lineWidth = 2;
+  ctx.strokeRect(padding - 10, padding - 10, canvas.width - (padding*2) + 20, gridAreaHeight - (padding*2) + 20);
 
-  // Koordinat Grid 2x2
+  // Perhitungan Grid
+  // Area bersih untuk 4 foto
+  const usableWidth = canvas.width - (padding * 2);
+  const usableHeight = gridAreaHeight - (padding * 2);
+  
+  const cellW = usableWidth / 2;
+  const cellH = usableHeight / 2;
+  const gap = 15; // Jarak antar foto
+
+  // Koordinat 4 Foto
   const positions = [
-    { x: 0, y: 0 },         // Kiri Atas
-    { x: w, y: 0 },         // Kanan Atas
-    { x: 0, y: h },         // Kiri Bawah
-    { x: w, y: h }          // Kanan Bawah
+    { x: padding, y: padding },
+    { x: padding + cellW + gap, y: padding },
+    { x: padding, y: padding + cellH + gap },
+    { x: padding + cellW + gap, y: padding + cellH + gap }
   ];
 
   ctx.save();
   ctx.filter = filter;
 
-  // Gambar 4 Foto
+  // Gambar 4 Foto dalam Grid
   capturedPhotos.forEach((img, index) => {
       if(index < 4) {
-          // Crop/Fit image agar sesuai kotak (object-fit: cover logic sederhana)
-          // Asumsi video kamera landscape, kita draw full saja
-          ctx.drawImage(img, positions[index].x, positions[index].y, w, h);
-          
-          // Garis pemisah tipis
-          ctx.strokeStyle = "white";
-          ctx.lineWidth = 5;
-          ctx.strokeRect(positions[index].x, positions[index].y, w, h);
+        // Crop foto landscape menjadi kotak portrait agar pas di cell
+        const croppedCanvas = cropCenter(img, cellW, cellH);
+        
+        const posX = positions[index].x;
+        const posY = positions[index].y;
+
+        // Shadow di belakang foto
+        ctx.shadowColor = "rgba(0,0,0,0.5)";
+        ctx.shadowBlur = 20;
+        ctx.shadowOffsetX = 5;
+        ctx.shadowOffsetY = 5;
+        
+        // Gambar foto yang sudah di-crop
+        ctx.drawImage(croppedCanvas, posX, posY, cellW, cellH);
+
+        // Reset shadow untuk border
+        ctx.shadowColor = "transparent";
+        
+        // Border putih tipis di sekeliling tiap foto
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 4;
+        ctx.strokeRect(posX, posY, cellW, cellH);
       }
   });
   ctx.restore();
-
-  // --- ELEMEN TAMBAHAN ---
-  
-  // 1. Footer Background
-  ctx.fillStyle = "#0f1113";
-  ctx.fillRect(0, canvas.height - 100, canvas.width, 100);
-
-  // 2. Garis Emas
-  ctx.strokeStyle = "#d4af37";
-  ctx.lineWidth = 5;
-  ctx.beginPath();
-  ctx.moveTo(0, canvas.height - 100);
-  ctx.lineTo(canvas.width, canvas.height - 100);
-  ctx.stroke();
-
-  // 3. Teks
-  ctx.fillStyle = "white";
-  ctx.font = "bold 40px serif";
-  ctx.textAlign = "center";
-  ctx.fillText("Tarhib Ramadhan 1447H", canvas.width / 2, canvas.height - 35);
-
-  // 4. GENERATE & DRAW QR CODE
-  generateAndDrawQR();
-}
-
-// [BARU] Fungsi Generate QR Code ke Canvas
-function generateAndDrawQR() {
-    // Konten QR: Link Website saat ini atau Nomor WA
-    // Karena tidak ada server upload gambar, kita arahkan ke link umum atau text sapaan.
-    const qrContent = "https://wa.me/?text=Halo%20saya%20baru%20saja%20foto%20di%20Tarhib%20Ramadhan!";
-    
-    const qrContainer = document.getElementById("qrcode-container");
-    qrContainer.innerHTML = ""; // Bersihkan dulu
-    
-    // Generate QR di elemen tersembunyi
-    const qrCode = new QRCode(qrContainer, {
-        text: qrContent,
-        width: 120,
-        height: 120
-    });
-
-    // Tunggu sebentar agar QR ter-render di dalam div, lalu gambar ke canvas
-    setTimeout(() => {
-        const qrCanvas = qrContainer.querySelector("canvas");
-        if (qrCanvas) {
-            // Gambar QR di Pojok Kanan Bawah
-            const qrX = canvas.width - 110; 
-            const qrY = canvas.height - 110; // Sedikit overlap ke atas footer
-            
-            // Kotak Putih di belakang QR agar kontras
-            ctx.fillStyle = "white";
-            ctx.fillRect(qrX - 5, qrY - 5, 90, 90);
-            
-            // Draw QR
-            ctx.drawImage(qrCanvas, qrX, qrY, 80, 80);
-        }
-    }, 100);
-}
-
-// Fungsi Filter
-function applyFilter(f) {
-  if (capturedPhotos.length === 0) return;
-  drawAll(f);
-}
-
-/**
- * 4. SHARE, SAVE & RESET
- */
-function downloadImage() {
-  const link = document.createElement("a");
-  link.download = `Grid_Ramadhan_${Date.now()}.png`;
-  link.href = canvas.toDataURL("image/png");
-  link.click();
-}
-
-function shareWA() {
-  let num = document.getElementById("wa-number").value.replace(/\D/g, "");
-  if (!num) return alert("Masukkan nomor WhatsApp yang valid!");
-
-  downloadImage(); // Auto save
-  const pesan = encodeURIComponent("Lihat foto seru 4 pose saya di Tarhib Ramadhan! 🌙");
-  window.open(`https://wa.me/${num}?text=${pesan}`, "_blank");
-}
-
-function resetApp() {
-  if (confirm("Ingin foto ulang?")) {
-    location.reload();
-  }
-}
-
-initApp();
