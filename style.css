@@ -235,4 +235,87 @@ body {
   border-radius: 12px;
   font-size: 1.1rem;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow
+  transition: transform 0.2s, box-shadow 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px -5px rgba(212, 175, 55, 0.5);
+}
+
+/* Animasi "denyut" untuk tombol mulai */
+.btn-pulse {
+    animation: pulse 2s infinite;
+}
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.4); }
+    70% { box-shadow: 0 0 0 15px rgba(212, 175, 55, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0); }
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.filter-btn {
+    background: #252930;
+    color: #ccc;
+    border: 1px solid #3f444a;
+    padding: 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+.filter-btn:hover { background: #333; }
+.filter-btn.active {
+    background: var(--gold);
+    color: var(--bg-dark);
+    border-color: var(--gold);
+    font-weight: 600;
+}
+
+.button-row {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-outline {
+  background: transparent;
+  border: 2px solid #444;
+  color: #ccc;
+  padding: 12px;
+  border-radius: 10px;
+  flex: 1;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+.btn-outline:hover {
+    border-color: var(--text-light);
+    color: var(--text-light);
+    background: rgba(255,255,255,0.05);
+}
+
+.btn-reset {
+  color: #ff6b6b;
+  text-decoration: none;
+  background: rgba(255, 107, 107, 0.1);
+  padding: 12px;
+  border-radius: 10px;
+  width: 100%;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.3s;
+}
+.btn-reset:hover {
+    background: rgba(255, 107, 107, 0.2);
+}
+
+.hidden {
+  display: none !important;
+}
