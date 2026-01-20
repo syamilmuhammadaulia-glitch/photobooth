@@ -1,216 +1,238 @@
 :root {
-  --bg-dark: #0f1113;
-  --panel-bg: #1a1d21;
+  --bg-dark: #0a0b0d;
+  --panel-bg: #15171b;
   --gold: #d4af37;
-  --gold-light: #f9e498;
-  --text-light: #e0e0e0;
-  --accent: #27ae60;
+  --gold-accent: #f2d06b;
+  --text-light: #f0f0f0;
+  --accent-green: #27ae60;
 }
 
 body {
   margin: 0;
-  padding: 0;
+  padding: 20px 0;
   font-family: "Inter", sans-serif;
-  background-color: var(--bg-dark);
+  background: radial-gradient(circle at center, #1a1d21 0%, #0a0b0d 100%);
   color: var(--text-light);
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  /* Hapus overflow hidden agar bisa di-scroll di layar kecil */
-  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 .app-container {
   width: 95%;
-  max-width: 1100px;
-  /* Tinggi fleksibel untuk layar kecil */
-  height: auto;
-  min-height: 90vh;
+  max-width: 1200px;
   background: var(--panel-bg);
-  border-radius: 20px;
-  padding: clamp(15px, 3vw, 25px);
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6);
-  border: 1px solid rgba(212, 175, 55, 0.15);
+  border-radius: 24px;
+  padding: 30px;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(212, 175, 55, 0.2);
   display: flex;
   flex-direction: column;
-  margin: 20px 0;
 }
 
 .main-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap; /* Membungkus konten jika layar sempit */
-  gap: 15px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding-bottom: 15px;
-  margin-bottom: 20px;
-  flex-shrink: 0;
+  padding-bottom: 20px;
+  margin-bottom: 25px;
+  border-bottom: 2px solid rgba(212, 175, 55, 0.15);
 }
 
 .logo {
   font-family: "Cinzel", serif;
-  font-size: clamp(1.2rem, 4vw, 1.6rem);
-  color: var(--gold-light);
+  font-size: 1.8rem;
+  color: var(--gold-accent);
+  letter-spacing: 1px;
 }
 
 .logo span {
   color: var(--gold);
+  font-weight: 700;
 }
 
-/* --- GRID LAYOUT RESPONSIF --- */
+/* --- LAYOUT UTAMA --- */
 .content-wrapper {
   display: grid;
-  /* Default 1 kolom (untuk mobile/layar kecil) */
   grid-template-columns: 1fr;
-  gap: 20px;
-  flex-grow: 1;
+  gap: 30px;
+  align-items: start;
 }
 
-/* Switch ke 2 kolom untuk layar di atas 850px (Desktop) */
-@media (min-width: 850px) {
+@media (min-width: 900px) {
   .content-wrapper {
-    grid-template-columns: 1.4fr 1fr;
-    gap: 30px;
-    height: 100%;
-    min-height: 0;
+    /* Kolom kiri untuk preview portrait, kanan untuk kontrol */
+    grid-template-columns: minmax(auto, 60vh) 1fr; 
   }
+}
+
+/* Container agar aspek rasio portrait terjaga */
+.preview-section-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
 }
 
 .preview-section {
   width: 100%;
-  /* Menjaga proporsi kotak kamera tetap 4:3 */
-  aspect-ratio: 4 / 3;
+  /* Aspek rasio Portrait (3:4) */
+  aspect-ratio: 3 / 4;
   background: #000;
-  border-radius: 12px;
-  border: 2px solid #2a2d31;
+  border-radius: 16px;
+  border: 3px solid rgba(212, 175, 55, 0.3);
   overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   position: relative;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
 
-#video-wrapper {
+#video-wrapper, .display-box {
   width: 100%;
   height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.display-box {
-  width: 100%;
-  height: 100%;
-  object-fit: contain; /* Menjamin rasio asli kamera DSLR/Webcam tetap terjaga */
+  /* Menggunakan cover agar video mengisi penuh frame portrait */
+  object-fit: cover; 
 }
 
 #timer-display {
   position: absolute;
-  top: 15px;
-  right: 15px;
-  background: rgba(212, 175, 55, 0.9);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(212, 175, 55, 0.95);
   color: #000;
-  font-size: clamp(1.5rem, 5vw, 2.5rem);
+  font-size: 5rem;
   font-weight: 800;
-  padding: 8px 20px;
-  border-radius: 10px;
+  width: 120px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
   display: none;
   z-index: 10;
+  box-shadow: 0 0 30px var(--gold);
 }
 
-/* Panel Kontrol Responsif */
+#photo-status {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--panel-bg);
+    background: var(--gold-accent);
+    padding: 8px 20px;
+    border-radius: 30px;
+    font-weight: 600;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    display: none; 
+    z-index: 5;
+}
+
+/* --- PANEL KONTROL KANAN --- */
 .control-panel {
-  background: rgba(255, 255, 255, 0.03);
-  padding: clamp(15px, 3vw, 20px);
-  border-radius: 15px;
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 20px;
+  height: 100%;
+  justify-content: center;
+}
+
+.panel-group {
+    background: rgba(255, 255, 255, 0.02);
+    padding: 25px;
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .panel-title {
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  font-family: "Cinzel", serif;
+  font-size: 1rem;
   color: var(--gold);
-  border-left: 3px solid var(--gold);
-  padding-left: 10px;
-}
-
-.input-row {
+  margin: 0 0 15px 0;
   display: flex;
+  align-items: center;
   gap: 10px;
 }
-
-.input-group label {
-  display: block;
-  font-size: 0.7rem;
-  margin-bottom: 5px;
-  color: #888;
+.panel-title::before {
+    content: '';
+    display: block;
+    width: 4px;
+    height: 1.2em;
+    background: var(--gold);
+    border-radius: 2px;
 }
 
-.input-group input,
-select {
+/* --- QR CODE HIGHLIGHT BOX (BARU) --- */
+.qr-highlight-box {
+    background: linear-gradient(135deg, var(--gold-accent), var(--gold));
+    padding: 25px;
+    border-radius: 18px;
+    text-align: center;
+    color: var(--bg-dark);
+    box-shadow: 0 10px 25px rgba(212, 175, 55, 0.3);
+    margin-bottom: 25px;
+    animation: popIn 0.5s ease-out;
+}
+
+@keyframes popIn {
+    from { transform: scale(0.9); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+#large-qrcode-display {
+    background: white;
+    padding: 15px;
+    border-radius: 12px;
+    display: inline-block;
+    margin: 15px 0;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
+}
+/* Memastikan gambar QR di dalamnya pas */
+#large-qrcode-display img, #large-qrcode-display canvas {
+    display: block;
+    width: 180px !important; /* Ukuran fix besar */
+    height: 180px !important;
+}
+
+.divider-gold {
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--gold), transparent);
+    margin: 20px 0;
+    opacity: 0.3;
+}
+
+/* --- INPUT & BUTTONS --- */
+.input-group label {
+  display: block;
+  font-size: 0.8rem;
+  margin-bottom: 8px;
+  color: #aaa;
+  text-align: center;
+}
+
+.input-group input, select {
   width: 100%;
-  padding: 12px;
-  background: #2a2d31;
+  padding: 14px;
+  background: #252930;
   border: 1px solid #3f444a;
   color: #fff;
-  border-radius: 8px;
-  font-size: 0.9rem;
+  border-radius: 10px;
+  font-size: 1rem;
+  transition: border-color 0.3s;
+}
+.input-group input:focus, select:focus {
+    border-color: var(--gold);
+    outline: none;
 }
 
 .btn-primary {
   width: 100%;
-  padding: 16px;
-  background: var(--gold);
-  color: #000;
+  padding: 18px;
+  background: linear-gradient(to bottom, var(--gold-accent), var(--gold));
+  color: var(--bg-dark);
   font-weight: 700;
-  border-radius: 10px;
-  font-size: 1rem;
-}
-
-.filter-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-}
-
-.action-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.button-row {
-  display: flex;
-  gap: 10px;
-}
-
-.btn-wa {
-  background: var(--accent);
-  color: white;
-  padding: 12px;
-  border-radius: 8px;
-  font-weight: 600;
-}
-.btn-outline {
-  background: transparent;
-  border: 1px solid #555;
-  color: white;
-  padding: 10px;
-  border-radius: 8px;
-  flex: 1;
-}
-.btn-reset {
-  color: #ff6b6b;
-  text-decoration: underline;
-  background: none;
-  margin-top: 5px;
-}
-
-.hidden {
-  display: none !important;
-}
+  border: none;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow
