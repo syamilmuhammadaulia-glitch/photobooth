@@ -5,7 +5,7 @@
 
 // --- KONFIGURASI ---
 // PASTE URL DARI LANGKAH 1 DI SINI (JANGAN SAMPAI SALAH/KURANG)
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxX9_24uWf4EI4b4PG6RkT8Ve8xDxM4vHkB_xE2te34s9RPIYpBmyRp6g5Zo3uVmX1ngw/exec"; 
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwGcZ5zyNCIJ1KJZfh3l7shAEn8UEQliO1jUDtss6iFe5vTdAFtAmUjFhgvh06rmrzZEg/exec"; 
 
 let videoStream = null;
 let capturedPhotos = []; 
@@ -300,3 +300,4 @@ function resetApp() {
 }
 
 window.addEventListener('load', initApp);
+
