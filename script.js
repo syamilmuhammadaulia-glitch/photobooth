@@ -1,10 +1,10 @@
 /**
  * PREMIUM PHOTOBOOTH CORE SCRIPT
- * Sinkron dengan index.html (Desain Baru)
+ * Sinkron dengan index.html
  */
 
 let videoStream = null;
-let fotoMentah = null;
+let capturedPhotos = []; // [BARU] Array untuk menyimpan 4 foto
 let currentDeviceId = null;
 
 // Mengambil elemen dari HTML
@@ -14,27 +14,20 @@ const ctx = canvas.getContext("2d");
 const videoWrapper = document.getElementById("video-wrapper");
 const setupControls = document.getElementById("setup-controls");
 const editorControls = document.getElementById("editor-controls");
+const statusDisplay = document.getElementById("photo-status"); // [BARU]
 
 /**
  * 1. INISIALISASI KAMERA (OTOMATIS)
  */
 async function initApp() {
   try {
-    // Meminta izin kamera terlebih dahulu agar label nama kamera muncul
     await navigator.mediaDevices.getUserMedia({ video: true });
-
     const devices = await navigator.mediaDevices.enumerateDevices();
-    const videoDevices = devices.filter(
-      (device) => device.kind === "videoinput",
-    );
+    const videoDevices = devices.filter((device) => device.kind === "videoinput");
     const select = document.getElementById("camera-select");
 
-    // Isi dropdown kamera
     select.innerHTML = videoDevices
-      .map(
-        (d) =>
-          `<option value="${d.deviceId}">${d.label || "Kamera " + d.deviceId.slice(0, 5)}</option>`,
-      )
+      .map((d) => `<option value="${d.deviceId}">${d.label || "Kamera " + d.deviceId.slice(0, 5)}</option>`)
       .join("");
 
     if (videoDevices.length > 0) {
@@ -43,7 +36,7 @@ async function initApp() {
     }
   } catch (err) {
     console.error("Gagal inisialisasi:", err);
-    alert("Mohon izinkan akses kamera agar aplikasi dapat berjalan.");
+    alert("Mohon izinkan akses kamera.");
   }
 }
 
@@ -51,7 +44,6 @@ async function startCamera(deviceId) {
   if (videoStream) {
     videoStream.getTracks().forEach((track) => track.stop());
   }
-
   const constraints = {
     video: {
       deviceId: deviceId ? { exact: deviceId } : undefined,
@@ -60,7 +52,6 @@ async function startCamera(deviceId) {
     },
     audio: false,
   };
-
   try {
     videoStream = await navigator.mediaDevices.getUserMedia(constraints);
     video.srcObject = videoStream;
@@ -69,20 +60,18 @@ async function startCamera(deviceId) {
   }
 }
 
-// Event ganti kamera dari dropdown
 document.getElementById("camera-select").onchange = (e) => {
   currentDeviceId = e.target.value;
   startCamera(currentDeviceId);
 };
 
 /**
- * 2. LOGIKA CAPTURE & TIMER
+ * 2. LOGIKA CAPTURE (LOOP 4 FOTO)
  */
 function runCountdown(seconds) {
   return new Promise((resolve) => {
     const display = document.getElementById("timer-display");
     let count = seconds;
-
     display.style.display = "block";
     display.innerText = count;
 
@@ -99,63 +88,157 @@ function runCountdown(seconds) {
   });
 }
 
+// [BARU] Fungsi Helper untuk jeda sebentar antar foto
+function wait(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 document.getElementById("btn-capture").onclick = async () => {
   const durasi = parseInt(document.getElementById("timer-duration").value) || 3;
+  capturedPhotos = []; // Reset array
+  
+  // Ambil 4 Foto
+  for (let i = 1; i <= 4; i++) {
+    // Update Status
+    statusDisplay.style.display = 'block';
+    statusDisplay.innerText = `Siap-siap! Foto ${i} dari 4`;
+    
+    // Countdown
+    await runCountdown(durasi);
+    
+    // Capture ke canvas sementara (virtual)
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = video.videoWidth;
+    tempCanvas.height = video.videoHeight;
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCtx.drawImage(video, 0, 0);
+    
+    // Simpan data gambar
+    const imgData = tempCanvas.toDataURL("image/png");
+    const imgObj = new Image();
+    imgObj.src = imgData;
+    await new Promise(r => imgObj.onload = r); // Tunggu load
+    capturedPhotos.push(imgObj);
+    
+    // Flash effect atau jeda singkat
+    statusDisplay.innerText = "Cekrek! 📸";
+    await wait(1000); 
+  }
 
-  // Proses Timer
-  await runCountdown(durasi);
+  statusDisplay.style.display = 'none';
 
-  // Ambil Gambar
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  // Transisi ke Editor
+  videoWrapper.classList.add("hidden");
+  canvas.classList.remove("hidden");
+  setupControls.classList.add("hidden");
+  editorControls.classList.remove("hidden");
 
-  // Simpan ke memori sebagai Image Object
-  fotoMentah = new Image();
-  fotoMentah.src = canvas.toDataURL("image/png");
-
-  fotoMentah.onload = () => {
-    // Transisi: Sembunyikan Video, Tampilkan Editor
-    videoWrapper.classList.add("hidden");
-    canvas.classList.remove("hidden");
-    setupControls.classList.add("hidden");
-    editorControls.classList.remove("hidden");
-
-    drawAll(); // Gambar Frame Awal
-  };
+  drawAll(); // Render Grid 2x2
 };
 
 /**
- * 3. EDITOR & FRAME DESIGN
+ * 3. EDITOR & FRAME DESIGN (GRID 2x2 + QR)
  */
 function drawAll(filter = "none") {
-  // 1. Bersihkan Canvas
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // Atur ukuran canvas utama (misal HD)
+  canvas.width = 1280; 
+  canvas.height = 960; // 4:3 Aspect Ratio (sedikit lebih tinggi untuk footer teks)
+  
+  // Warna Background Frame
+  ctx.fillStyle = "#1a1d21";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // 2. Gambar Foto dengan Filter
+  // Ukuran per foto dalam grid
+  const w = canvas.width / 2;
+  const h = (canvas.height - 100) / 2; // -100px untuk space teks/QR di bawah
+
+  // Koordinat Grid 2x2
+  const positions = [
+    { x: 0, y: 0 },         // Kiri Atas
+    { x: w, y: 0 },         // Kanan Atas
+    { x: 0, y: h },         // Kiri Bawah
+    { x: w, y: h }          // Kanan Bawah
+  ];
+
   ctx.save();
   ctx.filter = filter;
-  ctx.drawImage(fotoMentah, 0, 0, canvas.width, canvas.height);
+
+  // Gambar 4 Foto
+  capturedPhotos.forEach((img, index) => {
+      if(index < 4) {
+          // Crop/Fit image agar sesuai kotak (object-fit: cover logic sederhana)
+          // Asumsi video kamera landscape, kita draw full saja
+          ctx.drawImage(img, positions[index].x, positions[index].y, w, h);
+          
+          // Garis pemisah tipis
+          ctx.strokeStyle = "white";
+          ctx.lineWidth = 5;
+          ctx.strokeRect(positions[index].x, positions[index].y, w, h);
+      }
+  });
   ctx.restore();
 
-  // 3. FRAME PREMIUM RAMADHAN
-  // Border Emas
-  ctx.strokeStyle = "#d4af37";
-  ctx.lineWidth = 40;
-  ctx.strokeRect(0, 0, canvas.width, canvas.height);
+  // --- ELEMEN TAMBAHAN ---
+  
+  // 1. Footer Background
+  ctx.fillStyle = "#0f1113";
+  ctx.fillRect(0, canvas.height - 100, canvas.width, 100);
 
-  // Teks Ucapan
+  // 2. Garis Emas
+  ctx.strokeStyle = "#d4af37";
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(0, canvas.height - 100);
+  ctx.lineTo(canvas.width, canvas.height - 100);
+  ctx.stroke();
+
+  // 3. Teks
   ctx.fillStyle = "white";
-  ctx.font = "bold 35px serif"; // Font serif agar terlihat mewah
+  ctx.font = "bold 40px serif";
   ctx.textAlign = "center";
-  ctx.shadowColor = "black";
-  ctx.shadowBlur = 10;
-  ctx.fillText("Tarhib Ramadhan 1447H", canvas.width / 2, canvas.height - 60);
+  ctx.fillText("Tarhib Ramadhan 1447H", canvas.width / 2, canvas.height - 35);
+
+  // 4. GENERATE & DRAW QR CODE
+  generateAndDrawQR();
 }
 
-// Fungsi Filter (Dipanggil dari onclick di HTML)
+// [BARU] Fungsi Generate QR Code ke Canvas
+function generateAndDrawQR() {
+    // Konten QR: Link Website saat ini atau Nomor WA
+    // Karena tidak ada server upload gambar, kita arahkan ke link umum atau text sapaan.
+    const qrContent = "https://wa.me/?text=Halo%20saya%20baru%20saja%20foto%20di%20Tarhib%20Ramadhan!";
+    
+    const qrContainer = document.getElementById("qrcode-container");
+    qrContainer.innerHTML = ""; // Bersihkan dulu
+    
+    // Generate QR di elemen tersembunyi
+    const qrCode = new QRCode(qrContainer, {
+        text: qrContent,
+        width: 120,
+        height: 120
+    });
+
+    // Tunggu sebentar agar QR ter-render di dalam div, lalu gambar ke canvas
+    setTimeout(() => {
+        const qrCanvas = qrContainer.querySelector("canvas");
+        if (qrCanvas) {
+            // Gambar QR di Pojok Kanan Bawah
+            const qrX = canvas.width - 110; 
+            const qrY = canvas.height - 110; // Sedikit overlap ke atas footer
+            
+            // Kotak Putih di belakang QR agar kontras
+            ctx.fillStyle = "white";
+            ctx.fillRect(qrX - 5, qrY - 5, 90, 90);
+            
+            // Draw QR
+            ctx.drawImage(qrCanvas, qrX, qrY, 80, 80);
+        }
+    }, 100);
+}
+
+// Fungsi Filter
 function applyFilter(f) {
-  if (!fotoMentah) return;
+  if (capturedPhotos.length === 0) return;
   drawAll(f);
 }
 
@@ -164,7 +247,7 @@ function applyFilter(f) {
  */
 function downloadImage() {
   const link = document.createElement("a");
-  link.download = `Photo_Ramadhan_${Date.now()}.png`;
+  link.download = `Grid_Ramadhan_${Date.now()}.png`;
   link.href = canvas.toDataURL("image/png");
   link.click();
 }
@@ -173,16 +256,15 @@ function shareWA() {
   let num = document.getElementById("wa-number").value.replace(/\D/g, "");
   if (!num) return alert("Masukkan nomor WhatsApp yang valid!");
 
-  downloadImage(); // Otomatis simpan sebagai backup
-  const pesan = encodeURIComponent("Cek foto seru saya di Tarhib Ramadhan! 🌙");
+  downloadImage(); // Auto save
+  const pesan = encodeURIComponent("Lihat foto seru 4 pose saya di Tarhib Ramadhan! 🌙");
   window.open(`https://wa.me/${num}?text=${pesan}`, "_blank");
 }
 
 function resetApp() {
-  if (confirm("Ingin ambil foto ulang? Foto saat ini akan dihapus.")) {
+  if (confirm("Ingin foto ulang?")) {
     location.reload();
   }
 }
 
-// JALANKAN APLIKASI SAAT PAGE LOAD
 initApp();
