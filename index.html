@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Premium Photobooth | Tarhib Ramadhan</title>
     <link
-      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Playfair+Display:wght@400;700&family=Inter:wght@400;600&display=swap"
       rel="stylesheet"
     />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -23,90 +23,70 @@
       </header>
 
       <main class="content-wrapper">
-        <div class="preview-section">
-          <div id="video-wrapper" class="display-box">
-            <video id="video" autoplay playsinline></video>
-            <div id="timer-display"></div>
-            <div id="photo-status" style="display:none; position:absolute; bottom:20px; color:white; background:rgba(0,0,0,0.5); padding:5px 10px; border-radius:5px;"></div>
-          </div>
-          <canvas id="main-canvas" class="display-box hidden"></canvas>
+        <div class="preview-section-container">
+            <div class="preview-section">
+            <div id="video-wrapper" class="display-box">
+                <video id="video" autoplay playsinline></video>
+                <div id="timer-display"></div>
+                <div id="photo-status"></div>
+            </div>
+            <canvas id="main-canvas" class="display-box hidden"></canvas>
+            </div>
         </div>
 
         <aside class="control-panel">
           <div id="setup-controls" class="panel-group">
-            <h3 class="panel-title">Pengaturan Foto</h3>
+            <h3 class="panel-title">Siap Berpose?</h3>
+            <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 15px;">
+                Kita akan mengambil 4 foto berturut-turut. Gaya yang kece ya!
+            </p>
             <div class="input-row">
-              <div class="input-group">
-                <label>Jumlah Foto</label>
-                <input type="number" id="photo-count" value="4" disabled />
-              </div>
-              <div class="input-group">
+              <div class="input-group" style="flex:1">
+                 <input type="hidden" id="photo-count" value="4" />
                 <label>Timer (Detik)</label>
                 <input
                   type="number"
                   id="timer-duration"
                   value="3"
-                  min="1"
+                  min="2"
                   max="10"
+                  style="text-align: center;"
                 />
               </div>
             </div>
-            <button id="btn-capture" class="btn-primary">
-              📸 MULAI CAPTURE (4 POSE)
+            <button id="btn-capture" class="btn-primary btn-pulse">
+              📸 MULAI SESI FOTO (4 POSE)
             </button>
           </div>
 
           <div id="editor-controls" class="panel-group hidden">
-            <h3 class="panel-title">Efek & Filter</h3>
+            
+            <div class="qr-highlight-box">
+                <h3 style="color:var(--bg-dark); margin-top:0;">Scan untuk Simpan!</h3>
+                <div id="large-qrcode-display"></div>
+                <p style="color:#555; font-size: 0.85rem; margin-bottom:0;">
+                    Arahkan kamera HP Anda ke QR Code di atas untuk mendapatkan hasil foto.
+                </p>
+            </div>
+            <div class="divider-gold"></div>
+
+            <h3 class="panel-title">Pilih Filter Keren</h3>
             <div class="filter-grid">
-              <button class="filter-btn" onclick="applyFilter('none')">
-                Original
-              </button>
-              <button
-                class="filter-btn"
-                onclick="applyFilter('grayscale(100%)')"
-              >
-                B&W
-              </button>
-              <button class="filter-btn" onclick="applyFilter('sepia(80%)')">
-                Classic
-              </button>
-              <button
-                class="filter-btn"
-                onclick="applyFilter('brightness(1.2) contrast(1.1)')"
-              >
-                Vivid
-              </button>
+              <button class="filter-btn active" onclick="applyFilter('none', this)">Original</button>
+              <button class="filter-btn" onclick="applyFilter('grayscale(100%) contrast(1.1)', this)">B&W Glam</button>
+              <button class="filter-btn" onclick="applyFilter('sepia(60%) contrast(1.1)', this)">Vintage Warm</button>
+              <button class="filter-btn" onclick="applyFilter('brightness(1.1) saturate(1.3)', this)">Vivid Pop</button>
             </div>
 
-            <h3 class="panel-title">Kirim Hasil</h3>
-            <div class="input-group">
-              <label>Nomor WhatsApp</label>
-              <input type="text" id="wa-number" placeholder="628123456789" />
-            </div>
+            <h3 class="panel-title" style="margin-top: 20px;">Opsi Lainnya</h3>
+             <input type="hidden" id="wa-number" />
 
             <div class="action-buttons">
-              <button onclick="shareWA()" class="btn-wa">
-                💬 Kirim WhatsApp
-              </button>
               <div class="button-row">
-                <button onclick="downloadImage()" class="btn-outline">
-                  💾 Simpan
-                </button>
-                <button onclick="window.print()" class="btn-outline">
-                  🖨️ Cetak
-                </button>
+                <button onclick="downloadImage()" class="btn-outline">⬇️ Unduh Manual</button>
+                <button onclick="window.print()" class="btn-outline">🖨️ Cetak</button>
               </div>
               <button onclick="resetApp()" class="btn-reset">
-                Ambil Foto Ulang
+               🔄 Foto Ulang Saja
               </button>
             </div>
-            <div id="qrcode-container" style="display:none;"></div>
-          </div>
-        </aside>
-      </main>
-    </div>
-
-    <script src="script.js"></script>
-  </body>
-</html>
