@@ -8,6 +8,7 @@
       href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;600&display=swap"
       rel="stylesheet"
     />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -26,6 +27,7 @@
           <div id="video-wrapper" class="display-box">
             <video id="video" autoplay playsinline></video>
             <div id="timer-display"></div>
+            <div id="photo-status" style="display:none; position:absolute; bottom:20px; color:white; background:rgba(0,0,0,0.5); padding:5px 10px; border-radius:5px;"></div>
           </div>
           <canvas id="main-canvas" class="display-box hidden"></canvas>
         </div>
@@ -36,7 +38,7 @@
             <div class="input-row">
               <div class="input-group">
                 <label>Jumlah Foto</label>
-                <input type="number" id="photo-count" value="1" disabled />
+                <input type="number" id="photo-count" value="4" disabled />
               </div>
               <div class="input-group">
                 <label>Timer (Detik)</label>
@@ -50,7 +52,7 @@
               </div>
             </div>
             <button id="btn-capture" class="btn-primary">
-              📸 MULAI CAPTURE
+              📸 MULAI CAPTURE (4 POSE)
             </button>
           </div>
 
@@ -99,6 +101,7 @@
                 Ambil Foto Ulang
               </button>
             </div>
+            <div id="qrcode-container" style="display:none;"></div>
           </div>
         </aside>
       </main>
