@@ -247,3 +247,9 @@ function drawAll(filter = currentFilter) {
       }
   });
   ctx.restore();
+  // ... kode script.js yang sudah ada di atas ...
+
+// --- TAMBAHAN PENTING ---
+// Jalankan fungsi initApp saat halaman selesai dimuat
+window.addEventListener('load', initApp);
+
