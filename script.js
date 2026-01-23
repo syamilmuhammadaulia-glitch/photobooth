@@ -4,7 +4,7 @@
  */
 
 // --- PASTE URL APPS SCRIPT BARU DI SINI ---
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby2E6BKNotD6wjhjShjrwuF_8bkNZe8svvq5LqmquLxTE7u9641gpmxUqW8y1gGDnn_/exec"; 
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwyyqvDvK_Y9nd54Y-Y6koCUXjphsnzTMjkX02zfo2UtgSxusZ1eIxQ9Yhw80rjAWI/exec"; 
 
 let videoStream = null;
 let capturedPhotos = []; 
@@ -216,3 +216,4 @@ function downloadImage() { if (capturedPhotos.length) { const l = document.creat
 function shareWA() { if (!capturedPhotos.length) return alert("Foto dulu!"); let n = document.getElementById("wa-number").value.replace(/\D/g, ""); if(!n) return alert("No WA?"); downloadImage(); window.open(`https://wa.me/${n}?text=Ini%20foto%20saya!`, "_blank"); }
 function resetApp() { if (confirm("Ulang?")) location.reload(); }
 window.onload = initApp;
+
