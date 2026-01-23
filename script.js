@@ -1,6 +1,6 @@
 /**
- * PREMIUM PHOTOBOOTH - MULTI UPLOAD
- * Fitur: Bikin Folder Per Sesi, Upload 4 Pose + 1 Grid (Total 5 File)
+ * PREMIUM PHOTOBOOTH - FINAL VERSION
+ * Fix: CORS, Multi-Upload Parallel, & Center Cropping
  */
 
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxmy3vHV7orIJQVv-SocyPsH79eWDeR9zDr7m231nphytqJ1Qpjxv82V4iUN9w4UlE/exec"; 
@@ -48,9 +48,7 @@ async function startCamera(deviceId) {
       } 
     });
     video.srcObject = videoStream;
-  } catch (err) { 
-    console.error(err); 
-  }
+  } catch (err) { console.error(err); }
 }
 
 document.getElementById("camera-select").onchange = (e) => { 
@@ -66,21 +64,14 @@ function runCountdown(seconds, poseNum) {
     const display = document.getElementById("timer-display");
     const status = document.getElementById("photo-status");
     let count = seconds;
-    display.style.display = "flex"; 
-    display.innerText = count;
-    status.style.display = "block"; 
-    status.innerText = `Pose ${poseNum} / 4`;
+    display.style.display = "flex"; display.innerText = count;
+    status.style.display = "block"; status.innerText = `Pose ${poseNum} / 4`;
     
     const timer = setInterval(() => {
       count--;
       if (count <= 0) { 
-        clearInterval(timer); 
-        display.style.display = "none"; 
-        status.style.display = "none"; 
-        resolve(); 
-      } else { 
-        display.innerText = count; 
-      }
+        clearInterval(timer); display.style.display = "none"; status.style.display = "none"; resolve(); 
+      } else { display.innerText = count; }
     }, 1000);
   });
 }
@@ -89,8 +80,7 @@ document.getElementById("btn-capture").onclick = async () => {
   const durasi = parseInt(document.getElementById("timer-duration").value) || 3;
   capturedPhotos = [];
   const btn = document.getElementById("btn-capture");
-  btn.disabled = true; 
-  btn.innerText = "📸 Pose...";
+  btn.disabled = true; btn.innerText = "📸 Pose...";
 
   for (let i = 1; i <= 4; i++) {
     await runCountdown(durasi, i);
@@ -99,7 +89,7 @@ document.getElementById("btn-capture").onclick = async () => {
     tempCanvas.height = video.videoHeight;
     const tempCtx = tempCanvas.getContext('2d');
     
-    // Mirroring fix
+    // Mirroring Fix
     tempCtx.translate(video.videoWidth, 0); 
     tempCtx.scale(-1, 1);
     tempCtx.drawImage(video, 0, 0);
@@ -109,23 +99,18 @@ document.getElementById("btn-capture").onclick = async () => {
     await new Promise(r => img.onload = r);
     capturedPhotos.push(img); 
     
-    videoWrapper.style.opacity = "0.5"; 
-    await wait(200); 
-    videoWrapper.style.opacity = "1";
+    videoWrapper.style.opacity = "0.5"; await wait(200); videoWrapper.style.opacity = "1";
     if (i < 4) await wait(1000);
   }
 
-  btn.disabled = false; 
-  btn.innerText = "📸 MULAI FOTO";
-  videoWrapper.classList.add("hidden"); 
-  canvas.classList.remove("hidden");
-  setupControls.classList.add("hidden"); 
-  editorControls.classList.remove("hidden");
+  btn.disabled = false; btn.innerText = "📸 MULAI FOTO";
+  videoWrapper.classList.add("hidden"); canvas.classList.remove("hidden");
+  setupControls.classList.add("hidden"); editorControls.classList.remove("hidden");
   
   await drawAll();
 };
 
-// 3. DRAW & ORCHESTRATE UPLOAD
+// 3. DRAW LOGIC (CENTER CROPPING FIX)
 async function drawAll(filter = "none") {
   canvas.width = 1200; 
   canvas.height = 1800;
@@ -136,54 +121,64 @@ async function drawAll(filter = "none") {
     { x: 0, y: cellH }, { x: cellW, y: cellH }
   ];
 
-  ctx.save(); 
-  ctx.filter = filter;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
   capturedPhotos.forEach((img, i) => {
     if (i < 4) {
-      const scale = Math.max(cellW / img.width, cellH / img.height);
-      const x = (cellW / scale - img.width) / 2;
-      const y = (cellH / scale - img.height) / 2;
-      ctx.save(); 
-      ctx.translate(positions[i].x, positions[i].y);
-      ctx.beginPath(); 
-      ctx.rect(0, 0, cellW, cellH); 
-      ctx.clip();
-      ctx.scale(scale, scale); 
-      ctx.drawImage(img, x, y); 
+      ctx.save();
+      ctx.filter = filter;
+      
+      const posX = positions[i].x;
+      const posY = positions[i].y;
+
+      // LOGIKA CENTER CROP (Mencegah Foto Geser)
+      const ratio = Math.max(cellW / img.width, cellH / img.height);
+      const drawWidth = img.width * ratio;
+      const drawHeight = img.height * ratio;
+
+      const offsetX = (cellW - drawWidth) / 2;
+      const offsetY = (cellH - drawHeight) / 2;
+
+      ctx.beginPath();
+      ctx.rect(posX, posY, cellW, cellH);
+      ctx.clip(); // Potong bagian yang luber
+
+      ctx.drawImage(img, posX + offsetX, posY + offsetY, drawWidth, drawHeight);
+      
       ctx.restore();
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.8)"; 
-      ctx.lineWidth = 4;
-      ctx.strokeRect(positions[i].x, positions[i].y, cellW, cellH);
+      // Border putih antar foto
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 10;
+      ctx.strokeRect(posX, posY, cellW, cellH);
     }
   });
-  ctx.restore();
 
   // Overlay Text
-  ctx.save(); 
-  ctx.shadowColor = "rgba(0,0,0,0.8)"; 
-  ctx.shadowBlur = 15; 
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.8)";
+  ctx.shadowBlur = 15;
   ctx.shadowOffsetY = 4;
-  ctx.fillStyle = "#ffffff"; 
-  ctx.font = "bold 60px 'Cinzel', serif"; 
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 60px 'Cinzel', serif";
   ctx.textAlign = "center";
   ctx.fillText("Tarhib Ramadhan", canvas.width / 2, canvas.height / 2 - 15);
-  ctx.font = "30px sans-serif"; 
+  ctx.font = "30px sans-serif";
   ctx.fillText("1447 H / 2026 M", canvas.width / 2, canvas.height / 2 + 35);
   ctx.restore();
 
   await processSessionUpload();
 }
 
+// 4. UPLOAD LOGIC
 async function processSessionUpload() {
   qrcodeContainer.style.display = "block";
   qrcodeContainer.innerHTML = "<p>📂 Menghubungkan ke Drive...</p>";
 
   try {
-    // LANGKAH 1: Buat Folder
     const response = await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
-      mode: "cors", // Mengaktifkan CORS
-      redirect: "follow", // Mengikuti redirect Google Script
+      mode: "cors",
+      redirect: "follow",
       body: JSON.stringify({ action: "create_folder" }),
       headers: { "Content-Type": "text/plain;charset=utf-8" } 
     });
@@ -194,28 +189,23 @@ async function processSessionUpload() {
     const folderId = folderData.folderId;
     const folderUrl = folderData.folderUrl;
     
-    // LANGKAH 2: Munculkan QR
     await generateQR(folderUrl);
     
-    // LANGKAH 3: Upload Semua File Secara Paralel
     qrcodeContainer.innerHTML += "<p style='font-size:12px; color:#aaa'>Mengirim foto...</p>";
     
-    const uploads = [];
-    // 4 Pose mentah
-    capturedPhotos.forEach((img, i) => {
-      uploads.push(uploadSingleFile(img.src, `Pose_${i+1}.jpg`, folderId));
-    });
-    // 1 Grid final
+    // Upload Paralel agar Cepat
+    const uploads = capturedPhotos.map((img, i) => 
+      uploadSingleFile(img.src, `Pose_${i+1}.jpg`, folderId)
+    );
     const gridDataUrl = canvas.toDataURL("image/jpeg", 0.9);
     uploads.push(uploadSingleFile(gridDataUrl, "Grid_Final_Full.jpg", folderId));
 
     await Promise.all(uploads);
-    
-    qrcodeContainer.innerHTML += "<p style='color:lightgreen; font-size:12px'>✅ Selesai!</p>";
+    qrcodeContainer.innerHTML += "<p style='color:lightgreen; font-size:12px'>✅ Tersimpan!</p>";
 
   } catch (err) {
     console.error("Upload Error:", err);
-    qrcodeContainer.innerHTML = `<p style='color:red'>Gagal Upload: ${err.message}</p>`;
+    qrcodeContainer.innerHTML = `<p style='color:red'>Gagal: ${err.message}</p>`;
   }
 }
 
@@ -223,7 +213,7 @@ async function uploadSingleFile(base64Str, filename, folderId) {
   const cleanBase64 = base64Str.split(",")[1];
   return fetch(GOOGLE_SCRIPT_URL, {
     method: "POST",
-    mode: "no-cors", // Gunakan no-cors untuk upload file agar lebih cepat & bypass preflight
+    mode: "no-cors",
     body: JSON.stringify({
       action: "upload_file",
       folderId: folderId,
@@ -233,17 +223,13 @@ async function uploadSingleFile(base64Str, filename, folderId) {
   });
 }
 
+// 5. QR CODE LOGIC
 async function generateQR(url) {
   qrcodeContainer.innerHTML = "";
   const qrDiv = document.createElement("div");
-  
-  // Pastikan library QRCode sudah di-load di HTML
   new QRCode(qrDiv, { 
-    text: url, 
-    width: 200, 
-    height: 200, 
-    colorDark : "#000000", 
-    colorLight : "#ffffff", 
+    text: url, width: 200, height: 200, 
+    colorDark : "#000000", colorLight : "#ffffff", 
     correctLevel : QRCode.CorrectLevel.L 
   });
 
@@ -252,15 +238,10 @@ async function generateQR(url) {
   if (qrCanvas) {
     const uiImg = document.createElement("img");
     uiImg.src = qrCanvas.toDataURL();
-    uiImg.style.width = "100%"; 
-    uiImg.style.maxWidth = "140px"; 
-    uiImg.style.border = "5px solid white"; 
-    uiImg.style.borderRadius = "8px";
-    
+    uiImg.style.width = "100%"; uiImg.style.maxWidth = "140px"; uiImg.style.border = "5px solid white"; uiImg.style.borderRadius = "8px";
     qrcodeContainer.innerHTML = "<p style='margin-bottom:5px; color:gold; font-size:14px; font-weight:bold'>Scan Folder Drive:</p>";
     qrcodeContainer.appendChild(uiImg);
     
-    // Gambar QR di Canvas Utama (Pojok)
     const qrSize = 150; 
     const qrX = canvas.width - qrSize - 40; 
     const qrY = canvas.height - qrSize - 40;
@@ -273,20 +254,15 @@ async function generateQR(url) {
 function applyFilter(f) { if (capturedPhotos.length) drawAll(f); }
 function downloadImage() { 
   if (capturedPhotos.length) { 
-    const l = document.createElement("a"); 
-    l.download = `Photobooth_${Date.now()}.jpg`; 
-    l.href = canvas.toDataURL("image/jpeg", 0.95); 
-    l.click(); 
+    const l = document.createElement("a"); l.download = `Photo_${Date.now()}.jpg`; 
+    l.href = canvas.toDataURL("image/jpeg", 0.95); l.click(); 
   }
 }
 function shareWA() { 
-  if (!capturedPhotos.length) return alert("Foto dulu!"); 
   let n = document.getElementById("wa-number").value.replace(/\D/g, ""); 
   if(!n) return alert("Masukkan nomor WA!"); 
-  downloadImage(); 
   window.open(`https://wa.me/${n}?text=Ini hasil foto photobooth saya!`, "_blank"); 
 }
-function resetApp() { if (confirm("Hapus sesi ini dan ulang?")) location.reload(); }
+function resetApp() { if (confirm("Ulang sesi?")) location.reload(); }
 
 window.onload = initApp;
-
