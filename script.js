@@ -3,7 +3,7 @@
  * Fitur: Bikin Folder Per Sesi, Upload 4 Pose + 1 Grid (Total 5 File)
  */
 
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwyyqvDvK_Y9nd54Y-Y6koCUXjphsnzTMjkX02zfo2UtgSxusZ1eIxQ9Yhw80rjAWI/exec"; 
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxmy3vHV7orIJQVv-SocyPsH79eWDeR9zDr7m231nphytqJ1Qpjxv82V4iUN9w4UlE/exec"; 
 
 let videoStream = null;
 let capturedPhotos = []; 
@@ -289,3 +289,4 @@ function shareWA() {
 function resetApp() { if (confirm("Hapus sesi ini dan ulang?")) location.reload(); }
 
 window.onload = initApp;
+
