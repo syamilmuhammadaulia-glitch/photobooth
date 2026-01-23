@@ -217,3 +217,4 @@ function shareWA() { if (!capturedPhotos.length) return alert("Foto dulu!"); let
 function resetApp() { if (confirm("Ulang?")) location.reload(); }
 window.onload = initApp;
 
+
