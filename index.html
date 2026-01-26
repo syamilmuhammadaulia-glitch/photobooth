@@ -8,8 +8,12 @@
       href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;600&display=swap"
       rel="stylesheet"
     />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link
+      href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="style.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   </head>
   <body>
     <div class="app-container">
@@ -23,91 +27,144 @@
       </header>
 
       <main class="content-wrapper">
-        <div class="preview-section">
+        <div class="preview-section" id="main-preview-area">
           <div id="video-wrapper" class="display-box">
             <video id="video" autoplay playsinline></video>
+
+            <button id="btn-expand" class="btn-expand" title="Perbesar Layar">
+              <i class="bx bx-fullscreen"></i>
+            </button>
+
             <div id="timer-display"></div>
-            <div id="photo-status" style="display:none; position:absolute; bottom:20px; color:white; background:rgba(0,0,0,0.5); padding:5px 10px; border-radius:5px;"></div>
+            <div id="photo-status"></div>
           </div>
           <canvas id="main-canvas" class="display-box hidden"></canvas>
         </div>
 
         <aside class="control-panel">
-          <div id="setup-controls" class="panel-group">
-            <h3 class="panel-title">Pengaturan Foto</h3>
-            <div class="input-row">
-              <div class="input-group">
-                <label>Jumlah Foto</label>
-                <input type="number" id="photo-count" value="4" disabled />
+          <div id="setup-container" class="side-by-side">
+            <div id="setup-controls" class="panel-group">
+              <h3 class="panel-title">Pengaturan Foto</h3>
+              <div
+                class="input-row"
+                style="display: flex; gap: 10px; margin-bottom: 15px"
+              >
+                <div class="input-group" style="flex: 1">
+                  <label>Jumlah Foto</label>
+                  <input type="number" id="photo-count" value="4" disabled />
+                </div>
+                <div class="input-group" style="flex: 1">
+                  <label>Timer (Detik)</label>
+                  <input
+                    type="number"
+                    id="timer-duration"
+                    value="3"
+                    min="1"
+                    max="10"
+                  />
+                </div>
               </div>
-              <div class="input-group">
-                <label>Timer (Detik)</label>
-                <input
-                  type="number"
-                  id="timer-duration"
-                  value="3"
-                  min="1"
-                  max="10"
-                />
+              <button id="btn-capture" class="btn-primary">
+                📸 MULAI CAPTURE (4 POSE)
+              </button>
+            </div>
+
+            <div id="unit-panel" class="panel-group">
+              <p class="panel-title">Pilih Unit Sekolah</p>
+              <div class="unit-selector-grid">
+                <label class="unit-card">
+                  <input
+                    type="radio"
+                    name="school-unit"
+                    value="UMUM"
+                    onchange="updateUnitSelection()"
+                    checked
+                  />
+                  <div class="unit-content">
+                    <i
+                      class="bx bx-group"
+                      style="font-size: 32px; color: #d4af37"
+                    ></i>
+                    <span>UMUM</span>
+                  </div>
+                </label>
+                <label class="unit-card">
+                  <input
+                    type="radio"
+                    name="school-unit"
+                    value="TK"
+                    onchange="updateUnitSelection()"
+                  />
+                  <div class="unit-content">
+                    <img src="TK.jpg" alt="TK" /><span>TK</span>
+                  </div>
+                </label>
+                <label class="unit-card">
+                  <input
+                    type="radio"
+                    name="school-unit"
+                    value="SD"
+                    onchange="updateUnitSelection()"
+                  />
+                  <div class="unit-content">
+                    <img src="SDIP.jpg" alt="SD" /><span>SD</span>
+                  </div>
+                </label>
+                <label class="unit-card">
+                  <input
+                    type="radio"
+                    name="school-unit"
+                    value="SMP"
+                    onchange="updateUnitSelection()"
+                  />
+                  <div class="unit-content">
+                    <img src="SMPIP.jpg" alt="SMP" /><span>SMP</span>
+                  </div>
+                </label>
+                <label class="unit-card">
+                  <input
+                    type="radio"
+                    name="school-unit"
+                    value="PPIA"
+                    onchange="updateUnitSelection()"
+                  />
+                  <div class="unit-content">
+                    <img src="PPIA.jpg" alt="PPIA" /><span>PPIA</span>
+                  </div>
+                </label>
               </div>
             </div>
-            <button id="btn-capture" class="btn-primary">
-              📸 MULAI CAPTURE (4 POSE)
-            </button>
           </div>
 
           <div id="editor-controls" class="panel-group hidden">
-            <h3 class="panel-title">Efek & Filter</h3>
-            <div class="filter-grid">
-              <button class="filter-btn" onclick="applyFilter('none')">
-                Original
-              </button>
-              <button
-                class="filter-btn"
-                onclick="applyFilter('grayscale(100%)')"
-              >
-                B&W
-              </button>
-              <button class="filter-btn" onclick="applyFilter('sepia(80%)')">
-                Classic
-              </button>
-              <button
-                class="filter-btn"
-                onclick="applyFilter('brightness(1.2) contrast(1.1)')"
-              >
-                Vivid
-              </button>
-            </div>
-
             <h3 class="panel-title">Kirim Hasil</h3>
             <div class="input-group">
               <label>Nomor WhatsApp</label>
               <input type="text" id="wa-number" placeholder="628123456789" />
             </div>
-
             <div class="action-buttons">
-              <button onclick="shareWA()" class="btn-wa">
-                💬 Kirim WhatsApp
-              </button>
-              <div class="button-row">
-                <button onclick="downloadImage()" class="btn-outline">
-                  💾 Simpan
-                </button>
-                <button onclick="window.print()" class="btn-outline">
-                  🖨️ Cetak
+              <button onclick="shareWA()" class="btn-wa">Kirim WhatsApp</button>
+              <div class="button-row" style="margin-top: 10px">
+                <button
+                  onclick="downloadImage()"
+                  class="btn-outline"
+                  style="width: 100%"
+                >
+                  Simpan
                 </button>
               </div>
               <button onclick="resetApp()" class="btn-reset">
                 Ambil Foto Ulang
               </button>
             </div>
-            <div id="qrcode-container" style="display:none;"></div>
+            <div
+              id="qrcode-container"
+              style="margin-top: 15px; text-align: center"
+            ></div>
           </div>
         </aside>
       </main>
     </div>
-
     <script src="script.js"></script>
   </body>
 </html>
-
