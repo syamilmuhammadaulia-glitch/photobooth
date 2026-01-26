@@ -1,14 +1,14 @@
-/**
- * PREMIUM PHOTOBOOTH - FINAL VERSION
- * Fix: CORS, Multi-Upload Parallel, & Center Cropping
- */
+/* --- CONFIGURATION --- */
+const GOOGLE_SCRIPT_URL =
+  "https://script.google.com/macros/s/AKfycbxmy3vHV7orIJQVv-SocyPsH79eWDeR9zDr7m231nphytqJ1Qpjxv82V4iUN9w4UlE/exec";
 
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxmy3vHV7orIJQVv-SocyPsH79eWDeR9zDr7m231nphytqJ1Qpjxv82V4iUN9w4UlE/exec"; 
-
+/* --- STATE MANAGEMENT --- */
 let videoStream = null;
-let capturedPhotos = []; 
+let capturedPhotos = [];
 let currentDeviceId = null;
+let lastFolderUrl = "";
 
+/* --- DOM ELEMENTS --- */
 const video = document.getElementById("video");
 const canvas = document.getElementById("main-canvas");
 const ctx = canvas.getContext("2d");
@@ -16,196 +16,231 @@ const videoWrapper = document.getElementById("video-wrapper");
 const setupControls = document.getElementById("setup-controls");
 const editorControls = document.getElementById("editor-controls");
 const qrcodeContainer = document.getElementById("qrcode-container");
+const appContainer = document.querySelector(".app-container");
+const btnExpand = document.getElementById("btn-expand");
+const previewArea = document.getElementById("main-preview-area");
+const btnCapture = document.getElementById("btn-capture");
+const cameraSelect = document.getElementById("camera-select");
 
-// 1. INIT KAMERA
+/* --- INITIALIZATION --- */
 async function initApp() {
   try {
-    await navigator.mediaDevices.getUserMedia({ video: true });
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    stream.getTracks().forEach((t) => t.stop());
+
     const devices = await navigator.mediaDevices.enumerateDevices();
-    const videoDevices = devices.filter((device) => device.kind === "videoinput");
-    const select = document.getElementById("camera-select");
-    
-    select.innerHTML = videoDevices.map((d) => `<option value="${d.deviceId}">${d.label || "Kamera " + d.deviceId.slice(0, 5)}</option>`).join("");
-    
+    const videoDevices = devices.filter((d) => d.kind === "videoinput");
+
+    cameraSelect.innerHTML = videoDevices
+      .map(
+        (d, i) =>
+          `<option value="${d.deviceId}">${d.label || "Camera " + (i + 1)}</option>`,
+      )
+      .join("");
+
     if (videoDevices.length > 0) {
       currentDeviceId = videoDevices[0].deviceId;
       await startCamera(currentDeviceId);
     }
-  } catch (err) { 
-    console.error(err); 
-    alert("Izin kamera diperlukan."); 
+  } catch (err) {
+    console.error("Izin kamera diperlukan:", err);
+    alert("Mohon izinkan akses kamera untuk menggunakan Photobooth.");
   }
 }
 
 async function startCamera(deviceId) {
-  if (videoStream) videoStream.getTracks().forEach((t) => t.stop());
+  if (videoStream) {
+    videoStream.getTracks().forEach((t) => t.stop());
+  }
   try {
-    videoStream = await navigator.mediaDevices.getUserMedia({ 
-      video: { 
-        deviceId: deviceId ? { exact: deviceId } : undefined, 
-        width: { ideal: 1280 }, 
-        height: { ideal: 720 } 
-      } 
+    videoStream = await navigator.mediaDevices.getUserMedia({
+      video: { deviceId: { exact: deviceId }, width: 1280, height: 720 },
     });
     video.srcObject = videoStream;
-  } catch (err) { console.error(err); }
+  } catch (err) {
+    console.error("Error starting camera:", err);
+  }
 }
 
-document.getElementById("camera-select").onchange = (e) => { 
-  currentDeviceId = e.target.value; 
-  startCamera(currentDeviceId); 
+/* --- UTILITIES --- */
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+cameraSelect.onchange = (e) => startCamera(e.target.value);
+
+/* --- FULLSCREEN/EXPAND LOGIC --- */
+btnExpand.onclick = () => {
+  previewArea.classList.toggle("is-expanded");
+  if (navigator.vibrate) navigator.vibrate(50);
 };
 
-// 2. CAPTURE LOGIC
-const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && previewArea.classList.contains("is-expanded")) {
+    previewArea.classList.remove("is-expanded");
+  }
+});
 
-function runCountdown(seconds, poseNum) {
-  return new Promise((resolve) => {
-    const display = document.getElementById("timer-display");
-    const status = document.getElementById("photo-status");
-    let count = seconds;
-    display.style.display = "flex"; display.innerText = count;
-    status.style.display = "block"; status.innerText = `Pose ${poseNum} / 4`;
-    
-    const timer = setInterval(() => {
-      count--;
-      if (count <= 0) { 
-        clearInterval(timer); display.style.display = "none"; status.style.display = "none"; resolve(); 
-      } else { display.innerText = count; }
-    }, 1000);
-  });
+/* --- CAPTURE ENGINE --- */
+async function runCountdown(seconds, poseNum) {
+  const display = document.getElementById("timer-display");
+  const status = document.getElementById("photo-status");
+
+  display.style.display = "flex";
+  status.style.display = "block";
+
+  for (let i = seconds; i > 0; i--) {
+    display.innerText = i;
+    status.innerText = `Pose ${poseNum} / 4`;
+    await wait(1000);
+  }
+
+  display.style.display = "none";
+  status.style.display = "none";
 }
 
-document.getElementById("btn-capture").onclick = async () => {
+btnCapture.onclick = async () => {
+  // Tutup mode expand jika sedang aktif
+  previewArea.classList.remove("is-expanded");
+
   const durasi = parseInt(document.getElementById("timer-duration").value) || 3;
   capturedPhotos = [];
-  const btn = document.getElementById("btn-capture");
-  btn.disabled = true; btn.innerText = "📸 Pose...";
+  btnCapture.disabled = true;
 
   for (let i = 1; i <= 4; i++) {
     await runCountdown(durasi, i);
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = video.videoWidth; 
+
+    // Flash Effect & Capture
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = video.videoWidth;
     tempCanvas.height = video.videoHeight;
-    const tempCtx = tempCanvas.getContext('2d');
-    
-    // Mirroring Fix
-    tempCtx.translate(video.videoWidth, 0); 
-    tempCtx.scale(-1, 1);
-    tempCtx.drawImage(video, 0, 0);
-    
-    const img = new Image(); 
+    const tCtx = tempCanvas.getContext("2d");
+
+    // Mirroring if needed (matching video preview)
+    tCtx.translate(tempCanvas.width, 0);
+    tCtx.scale(-1, 1);
+    tCtx.drawImage(video, 0, 0);
+
+    const img = new Image();
     img.src = tempCanvas.toDataURL("image/jpeg", 0.9);
-    await new Promise(r => img.onload = r);
-    capturedPhotos.push(img); 
-    
-    videoWrapper.style.opacity = "0.5"; await wait(200); videoWrapper.style.opacity = "1";
+    await new Promise((r) => (img.onload = r));
+    capturedPhotos.push(img);
+
+    // Flash UI
+    videoWrapper.style.opacity = "0.2";
+    await wait(150);
+    videoWrapper.style.opacity = "1";
+
     if (i < 4) await wait(1000);
   }
 
-  btn.disabled = false; btn.innerText = "📸 MULAI FOTO";
-  videoWrapper.classList.add("hidden"); canvas.classList.remove("hidden");
-  setupControls.classList.add("hidden"); editorControls.classList.remove("hidden");
-  
+  // Switch UI Mode
+  btnCapture.disabled = false;
+  videoWrapper.classList.add("hidden");
+  canvas.classList.remove("hidden");
+  setupControls.classList.add("hidden");
+  editorControls.classList.remove("hidden");
+
+  // Re-anchor Unit Panel
+  const unitPanel = document.getElementById("unit-panel");
+  const bottomAnchor = document.getElementById("unit-bottom-anchor");
+  if (unitPanel && bottomAnchor) {
+    bottomAnchor.appendChild(unitPanel);
+  }
+
+  appContainer.classList.add("editing-mode");
   await drawAll();
 };
 
-// 3. DRAW LOGIC (CENTER CROPPING FIX)
-async function drawAll(filter = "none") {
-  canvas.width = 1200; 
+/* --- CANVAS RENDERING --- */
+async function drawAll() {
+  canvas.width = 1200;
   canvas.height = 1800;
-  const cellW = canvas.width / 2; 
-  const cellH = canvas.height / 2;
-  const positions = [
-    { x: 0, y: 0 }, { x: cellW, y: 0 }, 
-    { x: 0, y: cellH }, { x: cellW, y: cellH }
-  ];
+  ctx.fillStyle = "white";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const selectedUnitElement = document.querySelector(
+    'input[name="school-unit"]:checked',
+  );
+  const selectedUnit = selectedUnitElement ? selectedUnitElement.value : "UMUM";
+
+  const photoW = 502;
+  const photoH = 500;
+  const gapX = 22;
+  const gapY = 22;
+  const startX = 88;
+  const startY = 388;
 
   capturedPhotos.forEach((img, i) => {
-    if (i < 4) {
-      ctx.save();
-      ctx.filter = filter;
-      
-      const posX = positions[i].x;
-      const posY = positions[i].y;
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const x = startX + col * (photoW + gapX);
+    const y = startY + row * (photoH + gapY);
 
-      // LOGIKA CENTER CROP (Mencegah Foto Geser)
-      const ratio = Math.max(cellW / img.width, cellH / img.height);
-      const drawWidth = img.width * ratio;
-      const drawHeight = img.height * ratio;
+    ctx.save();
+    const scale = Math.max(photoW / img.width, photoH / img.height);
+    const nw = img.width * scale;
+    const nh = img.height * scale;
 
-      const offsetX = (cellW - drawWidth) / 2;
-      const offsetY = (cellH - drawHeight) / 2;
-
-      ctx.beginPath();
-      ctx.rect(posX, posY, cellW, cellH);
-      ctx.clip(); // Potong bagian yang luber
-
-      ctx.drawImage(img, posX + offsetX, posY + offsetY, drawWidth, drawHeight);
-      
-      ctx.restore();
-      // Border putih antar foto
-      ctx.strokeStyle = "white";
-      ctx.lineWidth = 10;
-      ctx.strokeRect(posX, posY, cellW, cellH);
-    }
+    ctx.beginPath();
+    ctx.rect(x, y, photoW, photoH);
+    ctx.clip();
+    ctx.drawImage(img, x + (photoW - nw) / 2, y + (photoH - nh) / 2, nw, nh);
+    ctx.restore();
   });
 
-  // Overlay Text
-  ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,0.8)";
-  ctx.shadowBlur = 15;
-  ctx.shadowOffsetY = 4;
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 60px 'Cinzel', serif";
-  ctx.textAlign = "center";
-  ctx.fillText("Tarhib Ramadhan", canvas.width / 2, canvas.height / 2 - 15);
-  ctx.font = "30px sans-serif";
-  ctx.fillText("1447 H / 2026 M", canvas.width / 2, canvas.height / 2 + 35);
-  ctx.restore();
+  const frameImg = new Image();
+  frameImg.src = `frame-${selectedUnit.toLowerCase()}.png`;
+  try {
+    await new Promise((resolve, reject) => {
+      frameImg.onload = resolve;
+      frameImg.onerror = reject;
+    });
+    ctx.drawImage(frameImg, 0, 0, canvas.width, canvas.height);
+  } catch (e) {
+    console.warn("Frame tidak ditemukan, melanjutkan tanpa frame.");
+  }
 
+  // Jalankan upload otomatis setelah render selesai
   await processSessionUpload();
 }
 
-// 4. UPLOAD LOGIC
+/* --- CLOUD STORAGE & QR --- */
 async function processSessionUpload() {
   qrcodeContainer.style.display = "block";
-  qrcodeContainer.innerHTML = "<p>📂 Menghubungkan ke Drive...</p>";
+  qrcodeContainer.innerHTML =
+    "<p style='color: white;'>📂 Menyiapkan Link Drive...</p>";
 
   try {
     const response = await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
-      mode: "cors",
-      redirect: "follow",
       body: JSON.stringify({ action: "create_folder" }),
-      headers: { "Content-Type": "text/plain;charset=utf-8" } 
     });
-
     const folderData = await response.json();
-    if (folderData.status !== "success") throw new Error(folderData.message);
-    
-    const folderId = folderData.folderId;
-    const folderUrl = folderData.folderUrl;
-    
-    await generateQR(folderUrl);
-    
-    qrcodeContainer.innerHTML += "<p style='font-size:12px; color:#aaa'>Mengirim foto...</p>";
-    
-    // Upload Paralel agar Cepat
-    const uploads = capturedPhotos.map((img, i) => 
-      uploadSingleFile(img.src, `Pose_${i+1}.jpg`, folderId)
-    );
-    const gridDataUrl = canvas.toDataURL("image/jpeg", 0.9);
-    uploads.push(uploadSingleFile(gridDataUrl, "Grid_Final_Full.jpg", folderId));
 
-    await Promise.all(uploads);
-    qrcodeContainer.innerHTML += "<p style='color:lightgreen; font-size:12px'>✅ Tersimpan!</p>";
+    if (folderData.status === "success") {
+      lastFolderUrl = folderData.folderUrl;
+      await generateQR(folderData.folderUrl);
 
+      const uploads = capturedPhotos.map((img, i) =>
+        uploadSingleFile(img.src, `Pose_${i + 1}.jpg`, folderData.folderId),
+      );
+
+      uploads.push(
+        uploadSingleFile(
+          canvas.toDataURL("image/jpeg", 0.95),
+          "Final_Photobooth.jpg",
+          folderData.folderId,
+        ),
+      );
+
+      await Promise.all(uploads);
+      qrcodeContainer.insertAdjacentHTML(
+        "beforeend",
+        "<p style='color:lightgreen; font-size:12px'>✅ Tersimpan di Cloud!</p>",
+      );
+    }
   } catch (err) {
     console.error("Upload Error:", err);
-    qrcodeContainer.innerHTML = `<p style='color:red'>Gagal: ${err.message}</p>`;
+    qrcodeContainer.innerHTML = `<p style='color:red'>Gagal upload: ${err.message}</p>`;
   }
 }
 
@@ -218,51 +253,80 @@ async function uploadSingleFile(base64Str, filename, folderId) {
       action: "upload_file",
       folderId: folderId,
       image: cleanBase64,
-      filename: filename
-    })
+      filename: filename,
+    }),
   });
 }
 
-// 5. QR CODE LOGIC
 async function generateQR(url) {
   qrcodeContainer.innerHTML = "";
   const qrDiv = document.createElement("div");
-  new QRCode(qrDiv, { 
-    text: url, width: 200, height: 200, 
-    colorDark : "#000000", colorLight : "#ffffff", 
-    correctLevel : QRCode.CorrectLevel.L 
+
+  new QRCode(qrDiv, {
+    text: url,
+    width: 256,
+    height: 256,
+    correctLevel: QRCode.CorrectLevel.H,
   });
 
-  await wait(500);
+  await wait(600); // Tunggu QRCode selesai render
   const qrCanvas = qrDiv.querySelector("canvas");
+
   if (qrCanvas) {
+    // Tampilkan di UI
     const uiImg = document.createElement("img");
-    uiImg.src = qrCanvas.toDataURL();
-    uiImg.style.width = "100%"; uiImg.style.maxWidth = "140px"; uiImg.style.border = "5px solid white"; uiImg.style.borderRadius = "8px";
-    qrcodeContainer.innerHTML = "<p style='margin-bottom:5px; color:gold; font-size:14px; font-weight:bold'>Scan Folder Drive:</p>";
+    uiImg.src = qrCanvas.toDataURL("image/png");
+    uiImg.className = "qr-preview-img"; // Bisa tambahkan class CSS
+    uiImg.style.width = "100%";
+    uiImg.style.maxWidth = "130px";
+    uiImg.style.border = "4px solid white";
+
+    qrcodeContainer.innerHTML =
+      "<p style='color:gold; font-size:12px; margin-bottom:5px'>Scan Drive:</p>";
     qrcodeContainer.appendChild(uiImg);
-    
-    const qrSize = 150; 
-    const qrX = canvas.width - qrSize - 40; 
-    const qrY = canvas.height - qrSize - 40;
-    ctx.fillStyle = "rgba(255,255,255,0.9)"; 
-    ctx.fillRect(qrX-10, qrY-10, qrSize+20, qrSize+20);
+
+    // Gambar ke Canvas Utama (Pojok Kanan Bawah)
+    const qrSize = 235;
+    const qrX = 852;
+    const qrY = 1460;
     ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
   }
 }
 
-function applyFilter(f) { if (capturedPhotos.length) drawAll(f); }
-function downloadImage() { 
-  if (capturedPhotos.length) { 
-    const l = document.createElement("a"); l.download = `Photo_${Date.now()}.jpg`; 
-    l.href = canvas.toDataURL("image/jpeg", 0.95); l.click(); 
+/* --- ACTION FUNCTIONS --- */
+function shareWA() {
+  const waNumber = document.getElementById("wa-number").value.trim();
+  if (!waNumber || !lastFolderUrl) {
+    alert("Mohon masukkan nomor WhatsApp dan tunggu folder siap.");
+    return;
+  }
+
+  let cleanNumber = waNumber.replace(/\D/g, "");
+  if (cleanNumber.startsWith("0")) cleanNumber = "62" + cleanNumber.slice(1);
+
+  const message = encodeURIComponent(
+    `*BAITUL MAAL PHOTOBOOTH*\n\nHasil foto Anda sudah siap! Silakan unduh melalui link Google Drive berikut:\n\n${lastFolderUrl}`,
+  );
+  window.open(`https://wa.me/${cleanNumber}?text=${message}`, "_blank");
+  document.getElementById("wa-number").value = "";
+}
+
+function updateUnitSelection() {
+  if (capturedPhotos.length > 0) drawAll();
+}
+
+function downloadImage() {
+  const link = document.createElement("a");
+  link.download = `Photobooth_BM_${Date.now()}.jpg`;
+  link.href = canvas.toDataURL("image/jpeg", 0.98);
+  link.click();
+}
+
+function resetApp() {
+  if (confirm("Ulangi sesi foto? Data yang belum tersimpan akan hilang.")) {
+    location.reload();
   }
 }
-function shareWA() { 
-  let n = document.getElementById("wa-number").value.replace(/\D/g, ""); 
-  if(!n) return alert("Masukkan nomor WA!"); 
-  window.open(`https://wa.me/${n}?text=Ini hasil foto photobooth saya!`, "_blank"); 
-}
-function resetApp() { if (confirm("Ulang sesi?")) location.reload(); }
 
+/* --- EVENT LISTENERS --- */
 window.onload = initApp;
