@@ -80,12 +80,6 @@ body {
 }
 
 /* --- PREVIEW SECTION (KIRI) --- */
-.preview-section-container {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-}
-
 .preview-section {
   width: 100%;
   aspect-ratio: 3 / 4;
@@ -101,7 +95,7 @@ body {
 .display-box {
   width: 100%;
   height: 100%;
-  position: relative; /* Penting agar tombol absolute menempel di sini */
+  position: relative;
 }
 
 #video {
@@ -112,9 +106,13 @@ body {
   -webkit-transform: scaleX(-1);
 }
 
-/* --- TOMBOL PERBESAR (DIKOREKSI) --- */
+.hidden {
+  display: none !important;
+}
+
+/* --- TOMBOL PERBESAR --- */
 .btn-expand {
-  position: absolute; /* Mengambang di atas video */
+  position: absolute;
   top: 15px;
   right: 15px;
   background: rgba(0, 0, 0, 0.5);
@@ -124,7 +122,7 @@ body {
   height: 45px;
   border-radius: 10px;
   cursor: pointer;
-  z-index: 100; /* Pastikan paling depan */
+  z-index: 100;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -270,100 +268,56 @@ body {
   box-shadow: 0 10px 20px rgba(212, 175, 55, 0.3);
 }
 
-.btn-primary::after {
-  content: "";
-  position: absolute;
-  top: -50%;
-  left: -60%;
-  width: 20%;
-  height: 200%;
-  background: rgba(255, 255, 255, 0.4);
-  transform: rotate(30deg);
-  transition: all 0.6s ease;
-  animation: shimmer 3s infinite;
-}
-
-@keyframes shimmer {
-  0% {
-    left: -60%;
-  }
-  100% {
-    left: 150%;
-  }
-}
-
 .btn-primary:hover {
   transform: translateY(-5px) scale(1.02);
   box-shadow: 0 20px 40px rgba(212, 175, 55, 0.5);
   filter: brightness(1.1);
 }
 
-.btn-pulse {
-  animation: pulse 2s infinite;
+.btn-wa {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, #25d366 0%, #128c7e 100%);
+  color: white;
+  border: none;
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 15px rgba(37, 211, 102, 0.2);
 }
 
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.5);
-  }
-  70% {
-    box-shadow: 0 0 0 15px rgba(212, 175, 55, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0);
-  }
+.btn-wa:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 25px rgba(37, 211, 102, 0.4);
+  filter: contrast(1.1);
 }
 
-/* --- FILTER GRID --- */
-.filter-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-}
-
-.filter-btn {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text-muted);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 15px;
+.btn-outline {
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px solid var(--gold);
+  color: var(--gold);
+  padding: 14px;
   border-radius: 12px;
   cursor: pointer;
-  font-weight: 500;
-  transition: all 0.3s ease;
-}
-
-.filter-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.3);
-  color: #fff;
-}
-
-.filter-btn.active {
-  background: var(--gold-gradient);
-  color: #000;
-  border-color: var(--gold);
   font-weight: 700;
-  box-shadow: 0 5px 15px rgba(212, 175, 55, 0.3);
-  transform: translateY(-2px);
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
-/* --- QR CODE & ACTIONS --- */
-.qr-highlight-box {
-  background: var(--gold-gradient);
-  padding: 25px;
-  border-radius: 20px;
-  text-align: center;
+.btn-outline:hover {
+  background: var(--gold);
   color: #000;
-  box-shadow: 0 15px 35px rgba(212, 175, 55, 0.3);
-  margin-bottom: 20px;
-}
-
-#large-qrcode-display {
-  background: #fff;
-  padding: 12px;
-  border-radius: 15px;
-  display: inline-block;
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
 }
 
 .btn-reset {
@@ -378,6 +332,7 @@ body {
   text-transform: uppercase;
   letter-spacing: 1px;
   transition: all 0.3s ease;
+  margin-top: 15px;
 }
 
 .btn-reset:hover {
@@ -386,21 +341,7 @@ body {
   border-color: #ff4d4d;
 }
 
-.hidden {
-  display: none !important;
-}
-
-/* Scrollbar Styling */
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-track {
-  background: var(--bg-dark);
-}
-::-webkit-scrollbar-thumb {
-  background: var(--gold);
-  border-radius: 10px;
-}
+/* --- UNIT SELECTION GRID --- */
 .unit-selector-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -428,12 +369,15 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 8px;
+  height: 100%; /* Menjaga tinggi agar tidak gepeng */
 }
 
+/* PENTING: Style untuk gambar logo */
 .unit-content img {
   width: 40px;
   height: 40px;
   object-fit: contain;
+  display: block;
 }
 
 .unit-content span {
@@ -461,58 +405,7 @@ body {
   flex: 1;
 }
 
-.btn-wa {
-  width: 100%;
-  padding: 16px;
-  background: linear-gradient(135deg, #25d366 0%, #128c7e 100%);
-  color: white;
-  border: none;
-  border-radius: 14px;
-  font-weight: 700;
-  font-size: 1rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  transition: all 0.3s ease;
-  box-shadow: 0 8px 15px rgba(37, 211, 102, 0.2);
-}
-.btn-wa:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 25px rgba(37, 211, 102, 0.4);
-  filter: contrast(1.1);
-}
-.button-row {
-  display: grid;
-  flex-direction: column;
-  gap: 15px;
-  margin: 15px 0;
-  width: 100%;
-}
-.btn-outline {
-  background: rgba(255, 255, 255, 0.03);
-  border: 2px solid var(--gold);
-  color: var(--gold);
-  padding: 14px;
-  border-radius: 12px;
-  cursor: pointer;
-  font-weight: 700;
-  font-size: 0.9rem;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.btn-outline:hover {
-  background: var(--gold);
-  color: #000;
-  box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
-}
-
-/* --- FULLSCREEN VIRTUAL LOGIC --- */
+/* --- FULLSCREEN VIRTUAL --- */
 .preview-section.is-expanded {
   position: fixed;
   top: 0;
@@ -530,7 +423,6 @@ body {
   background: #000;
 }
 
-/* Mengubah icon saat mode besar */
 .preview-section.is-expanded .btn-expand i::before {
   content: "\ea50"; /* Icon exit-fullscreen */
 }
