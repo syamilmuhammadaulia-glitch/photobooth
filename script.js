@@ -34,7 +34,7 @@ async function initApp() {
     cameraSelect.innerHTML = videoDevices
       .map(
         (d, i) =>
-          `<option value="${d.deviceId}">${d.label || "Camera " + (i + 1)}</option>`,
+          `<option value="${d.deviceId}">${d.label || "Camera " + (i + 1)}</option>`
       )
       .join("");
 
@@ -139,7 +139,7 @@ btnCapture.onclick = async () => {
   setupControls.classList.add("hidden");
   editorControls.classList.remove("hidden");
 
-  // Re-anchor Unit Panel
+  // Re-anchor Unit Panel (Ini logika yang memindahkan menu)
   const unitPanel = document.getElementById("unit-panel");
   const bottomAnchor = document.getElementById("unit-bottom-anchor");
   if (unitPanel && bottomAnchor) {
@@ -162,6 +162,7 @@ async function drawAll() {
   );
   const selectedUnit = selectedUnitElement ? selectedUnitElement.value : "UMUM";
 
+  // Grid Layout
   const photoW = 502;
   const photoH = 500;
   const gapX = 22;
@@ -176,6 +177,7 @@ async function drawAll() {
     const y = startY + row * (photoH + gapY);
 
     ctx.save();
+    // Object-fit: cover logic
     const scale = Math.max(photoW / img.width, photoH / img.height);
     const nw = img.width * scale;
     const nh = img.height * scale;
@@ -187,8 +189,11 @@ async function drawAll() {
     ctx.restore();
   });
 
+  // Render Frame
   const frameImg = new Image();
+  // Pastikan file bernama: frame-umum.png, frame-tk.png, frame-sd.png, dll.
   frameImg.src = `frame-${selectedUnit.toLowerCase()}.png`;
+  
   try {
     await new Promise((resolve, reject) => {
       frameImg.onload = resolve;
@@ -196,7 +201,7 @@ async function drawAll() {
     });
     ctx.drawImage(frameImg, 0, 0, canvas.width, canvas.height);
   } catch (e) {
-    console.warn("Frame tidak ditemukan, melanjutkan tanpa frame.");
+    console.warn(`Frame untuk ${selectedUnit} tidak ditemukan. Pastikan nama file frame-${selectedUnit.toLowerCase()}.png ada di Assets.`);
   }
 
   // Jalankan upload otomatis setelah render selesai
@@ -235,7 +240,7 @@ async function processSessionUpload() {
       await Promise.all(uploads);
       qrcodeContainer.insertAdjacentHTML(
         "beforeend",
-        "<p style='color:lightgreen; font-size:12px'>✅ Tersimpan di Cloud!</p>",
+        "<p style='color:lightgreen; font-size:12px; margin-top:5px'>✅ Tersimpan di Cloud!</p>",
       );
     }
   } catch (err) {
@@ -276,13 +281,14 @@ async function generateQR(url) {
     // Tampilkan di UI
     const uiImg = document.createElement("img");
     uiImg.src = qrCanvas.toDataURL("image/png");
-    uiImg.className = "qr-preview-img"; // Bisa tambahkan class CSS
+    uiImg.className = "qr-preview-img";
     uiImg.style.width = "100%";
     uiImg.style.maxWidth = "130px";
     uiImg.style.border = "4px solid white";
+    uiImg.style.borderRadius = "8px";
 
     qrcodeContainer.innerHTML =
-      "<p style='color:gold; font-size:12px; margin-bottom:5px'>Scan Drive:</p>";
+      "<p style='color:gold; font-size:12px; margin-bottom:5px'>Scan untuk Unduh:</p>";
     qrcodeContainer.appendChild(uiImg);
 
     // Gambar ke Canvas Utama (Pojok Kanan Bawah)
@@ -294,7 +300,14 @@ async function generateQR(url) {
 }
 
 /* --- ACTION FUNCTIONS --- */
-function shareWA() {
+// Fungsi dipanggil saat ganti radio button
+window.updateUnitSelection = function() {
+  if (capturedPhotos.length > 0) {
+    drawAll();
+  }
+};
+
+window.shareWA = function() {
   const waNumber = document.getElementById("wa-number").value.trim();
   if (!waNumber || !lastFolderUrl) {
     alert("Mohon masukkan nomor WhatsApp dan tunggu folder siap.");
@@ -309,24 +322,20 @@ function shareWA() {
   );
   window.open(`https://wa.me/${cleanNumber}?text=${message}`, "_blank");
   document.getElementById("wa-number").value = "";
-}
+};
 
-function updateUnitSelection() {
-  if (capturedPhotos.length > 0) drawAll();
-}
-
-function downloadImage() {
+window.downloadImage = function() {
   const link = document.createElement("a");
   link.download = `Photobooth_BM_${Date.now()}.jpg`;
   link.href = canvas.toDataURL("image/jpeg", 0.98);
   link.click();
-}
+};
 
-function resetApp() {
+window.resetApp = function() {
   if (confirm("Ulangi sesi foto? Data yang belum tersimpan akan hilang.")) {
     location.reload();
   }
-}
+};
 
 /* --- EVENT LISTENERS --- */
 window.onload = initApp;
