@@ -34,7 +34,7 @@ async function initApp() {
     cameraSelect.innerHTML = videoDevices
       .map(
         (d, i) =>
-          `<option value="${d.deviceId}">${d.label || "Camera " + (i + 1)}</option>`
+          `<option value="${d.deviceId}">${d.label || "Camera " + (i + 1)}</option>`,
       )
       .join("");
 
@@ -114,9 +114,7 @@ btnCapture.onclick = async () => {
     tempCanvas.height = video.videoHeight;
     const tCtx = tempCanvas.getContext("2d");
 
-    // Mirroring if needed (matching video preview)
-    tCtx.translate(tempCanvas.width, 0);
-    tCtx.scale(-1, 1);
+    // No mirroring, capture exactly as previewed
     tCtx.drawImage(video, 0, 0);
 
     const img = new Image();
@@ -139,7 +137,7 @@ btnCapture.onclick = async () => {
   setupControls.classList.add("hidden");
   editorControls.classList.remove("hidden");
 
-  // Re-anchor Unit Panel (Ini logika yang memindahkan menu)
+  // Re-anchor Unit Panel
   const unitPanel = document.getElementById("unit-panel");
   const bottomAnchor = document.getElementById("unit-bottom-anchor");
   if (unitPanel && bottomAnchor) {
@@ -162,7 +160,6 @@ async function drawAll() {
   );
   const selectedUnit = selectedUnitElement ? selectedUnitElement.value : "UMUM";
 
-  // Grid Layout
   const photoW = 502;
   const photoH = 500;
   const gapX = 22;
@@ -177,7 +174,6 @@ async function drawAll() {
     const y = startY + row * (photoH + gapY);
 
     ctx.save();
-    // Object-fit: cover logic
     const scale = Math.max(photoW / img.width, photoH / img.height);
     const nw = img.width * scale;
     const nh = img.height * scale;
@@ -189,11 +185,8 @@ async function drawAll() {
     ctx.restore();
   });
 
-  // Render Frame
   const frameImg = new Image();
-  // Pastikan file bernama: frame-umum.png, frame-tk.png, frame-sd.png, dll.
   frameImg.src = `frame-${selectedUnit.toLowerCase()}.png`;
-  
   try {
     await new Promise((resolve, reject) => {
       frameImg.onload = resolve;
@@ -201,7 +194,7 @@ async function drawAll() {
     });
     ctx.drawImage(frameImg, 0, 0, canvas.width, canvas.height);
   } catch (e) {
-    console.warn(`Frame untuk ${selectedUnit} tidak ditemukan. Pastikan nama file frame-${selectedUnit.toLowerCase()}.png ada di Assets.`);
+    console.warn("Frame tidak ditemukan, melanjutkan tanpa frame.");
   }
 
   // Jalankan upload otomatis setelah render selesai
@@ -240,7 +233,7 @@ async function processSessionUpload() {
       await Promise.all(uploads);
       qrcodeContainer.insertAdjacentHTML(
         "beforeend",
-        "<p style='color:lightgreen; font-size:12px; margin-top:5px'>✅ Tersimpan di Cloud!</p>",
+        "<p style='color:lightgreen; font-size:12px'>✅ Tersimpan di Cloud!</p>",
       );
     }
   } catch (err) {
@@ -281,14 +274,13 @@ async function generateQR(url) {
     // Tampilkan di UI
     const uiImg = document.createElement("img");
     uiImg.src = qrCanvas.toDataURL("image/png");
-    uiImg.className = "qr-preview-img";
+    uiImg.className = "qr-preview-img"; // Bisa tambahkan class CSS
     uiImg.style.width = "100%";
     uiImg.style.maxWidth = "130px";
     uiImg.style.border = "4px solid white";
-    uiImg.style.borderRadius = "8px";
 
     qrcodeContainer.innerHTML =
-      "<p style='color:gold; font-size:12px; margin-bottom:5px'>Scan untuk Unduh:</p>";
+      "<p style='color:gold; font-size:12px; margin-bottom:5px'>Scan Drive:</p>";
     qrcodeContainer.appendChild(uiImg);
 
     // Gambar ke Canvas Utama (Pojok Kanan Bawah)
@@ -300,14 +292,7 @@ async function generateQR(url) {
 }
 
 /* --- ACTION FUNCTIONS --- */
-// Fungsi dipanggil saat ganti radio button
-window.updateUnitSelection = function() {
-  if (capturedPhotos.length > 0) {
-    drawAll();
-  }
-};
-
-window.shareWA = function() {
+function shareWA() {
   const waNumber = document.getElementById("wa-number").value.trim();
   if (!waNumber || !lastFolderUrl) {
     alert("Mohon masukkan nomor WhatsApp dan tunggu folder siap.");
@@ -318,24 +303,43 @@ window.shareWA = function() {
   if (cleanNumber.startsWith("0")) cleanNumber = "62" + cleanNumber.slice(1);
 
   const message = encodeURIComponent(
-    `*BAITUL MAAL PHOTOBOOTH*\n\nHasil foto Anda sudah siap! Silakan unduh melalui link Google Drive berikut:\n\n${lastFolderUrl}`,
+    `*📸 KENANGAN PAMERAN KELAS 9 PHOTOBOOTH*\n\n` +
+      `Assalamu'alaikum Warahmatullahi Wabarakatuh.\n\n` +
+      `Terima kasih telah berkunjung ke pameran karya kami. Hasil foto Anda sudah siap dan dapat diunduh melalui tautan Google Drive di bawah ini:\n\n` +
+      `*Link Foto:* ${lastFolderUrl}\n\n` +
+      `--------------------------------------------\n` +
+      `* INFO SPMB TA. 2026/2027*\n\n` +
+      `Dapatkan pendidikan terbaik untuk buah hati Anda. Info & Registrasi:\n` +
+      ` www.ppdb.ppiabaitulmaal.sch.id\n\n` +
+      `*Call & WA Center SMPIP Baitul Maal:*\n` +
+      ` 021-735-8755 (Kantor)\n` +
+      ` wa.me/6281284422270 (WhatsApp)\n\n` +
+      `*Official Account:*\n` +
+      ` Instagram: @smpip_baitul_maal\n` +
+      ` YouTube: SMPIP Baitul Maal\n` +
+      ` TikTok: @smpip_baitulmaal\n` +
+      ` FB: Smpip Baitul Maal`,
   );
   window.open(`https://wa.me/${cleanNumber}?text=${message}`, "_blank");
   document.getElementById("wa-number").value = "";
-};
+}
 
-window.downloadImage = function() {
+function updateUnitSelection() {
+  if (capturedPhotos.length > 0) drawAll();
+}
+
+function downloadImage() {
   const link = document.createElement("a");
   link.download = `Photobooth_BM_${Date.now()}.jpg`;
   link.href = canvas.toDataURL("image/jpeg", 0.98);
   link.click();
-};
+}
 
-window.resetApp = function() {
+function resetApp() {
   if (confirm("Ulangi sesi foto? Data yang belum tersimpan akan hilang.")) {
     location.reload();
   }
-};
+}
 
 /* --- EVENT LISTENERS --- */
 window.onload = initApp;
